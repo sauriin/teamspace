@@ -1,7 +1,7 @@
 export default {
   providers: [
     {
-      domain: "https://helpful-anemone-59.clerk.accounts.dev",
+      domain: "https://composed-kit-2.clerk.accounts.dev",
       applicationID: "convex",
     },
   ],
