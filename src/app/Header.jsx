@@ -9,9 +9,17 @@
 
     return (
         <div className="flex items-center justify-between rounded-full bg-[#3a2b5c] px-6 py-4 mb-10">
-        <div className="flex gap-10 font-semibold text-lg items-center">
+        <div className="flex gap-10 text-lg items-center">
             <span className="text-white cursor-pointer relative group">
             Docs
+            <span className="absolute left-0 -bottom-1 h-[2px] w-full origin-center scale-x-0 bg-white transition-transform duration-300 group-hover:scale-x-100"></span>
+            </span>
+            <span className="text-white cursor-pointer relative group">
+            Favourite
+            <span className="absolute left-0 -bottom-1 h-[2px] w-full origin-center scale-x-0 bg-white transition-transform duration-300 group-hover:scale-x-100"></span>
+            </span>
+            <span className="text-white cursor-pointer relative group">
+            Trash Bin
             <span className="absolute left-0 -bottom-1 h-[2px] w-full origin-center scale-x-0 bg-white transition-transform duration-300 group-hover:scale-x-100"></span>
             </span>
             

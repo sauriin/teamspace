@@ -1,6 +1,9 @@
+// layout.js or globals.js (your layout file)
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "./ConvexClientProvider";
+import { Toaster } from "@/components/ui/sonner";
+import Header from "./Header"; // ✅ import Header
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,11 +22,19 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ConvexClientProvider>{children}</ConvexClientProvider>
+        <ConvexClientProvider>
+          <Toaster />
+          <div className="fixed top-5 left-0 right-0 z-50 px-3 sm:px-6 lg:px-8 pt-3">
+            <div className="max-w-7xl mx-auto">
+              <Header />
+            </div>
+          </div>
+          {children}
+        </ConvexClientProvider>
       </body>
     </html>
   );
