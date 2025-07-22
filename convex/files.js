@@ -78,3 +78,44 @@ export const getFiles = query({
       .collect();
   },
 });
+
+export const deleteFile = mutation({
+  args: {
+    fileId: v.id("files"),
+  },
+  async handler(ctx, args) {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      throw new ConvexError("You don't have access to this Oganization. ");
+    }
+
+    const file = await ctx.db.get(args.fileId);
+
+    if (!file) {
+      throw new ConvexError("This File Does not exist ");
+    }
+    const hasAccess = await hasAccessToOrg(
+      ctx,
+      identity.tokenIdentifier,
+      file.orgId
+    );
+    if (!hasAccess) {
+      throw new ConvexError("You don't have access to this Oganization. ");
+    }
+    await ctx.db.delete(args.fileId);
+  },
+});
+
+export const getFileUrl = query({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, { storageId }) => {
+    const url = await ctx.storage.getUrl(storageId);
+    if (!url) throw new ConvexError("Failed to retrieve download URL.");
+    return url;
+  },
+});
+
+//1 hr 50min 20sec
