@@ -8,6 +8,10 @@ import { FileCard } from "@/_components/fileCard";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import FolderView from "@/_components/folderView"; // ✅ You need to create this
+
 export default function Home() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { user, isLoaded: userLoaded } = useUser();
@@ -15,7 +19,10 @@ export default function Home() {
   const orgId = organization?.id ?? user?.id;
   const isClerkLoaded = orgLoaded && userLoaded;
 
-  const getFiles = useQuery(api.files.getFiles, orgId ? { orgId } : "skip");
+  const getFiles = useQuery(
+    api.files.getFiles,
+    isClerkLoaded && orgId ? { orgId } : "skip"
+  );
   const isLoading = getFiles === undefined;
 
   if (!isClerkLoaded) {
@@ -25,44 +32,62 @@ export default function Home() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 pt-[150px]">
       <div className="max-w-7xl mx-auto">
-        {isLoading && (
-          <div className="flex flex-col gap-8 w-full items-center mt-24">
-            <Loader2 className="h-32 w-32 animate-spin text-gray-500" />
-            <div className="text-2xl">Loading...</div>
-          </div>
-        )}
+        <Tabs defaultValue="files">
+          <TabsList className="mb-6 text-lg">
+            <TabsTrigger value="files" className="px-5 py-2">
+              Files
+            </TabsTrigger>
+            <TabsTrigger value="folders" className="px-5 py-2">
+              Folders
+            </TabsTrigger>
+          </TabsList>
 
-        {!isLoading && getFiles.length === 0 && (
-          <div className="flex flex-col gap-4 w-full items-center mt-24">
-            <Image
-              alt="Image of empty state"
-              width="500"
-              height="500"
-              src="/empty.svg"
-            />
-            <div className="text-2xl text-gray-500 text-center">
-              Let’s build together — upload a file to get started.
-            </div>
-            <div className="mt-2">
-              <UploadButton />
-            </div>
-          </div>
-        )}
+          {/* ====== Files Tab ====== */}
+          <TabsContent value="files">
+            {isLoading && (
+              <div className="flex flex-col gap-8 w-full items-center mt-24">
+                <Loader2 className="h-32 w-32 animate-spin text-gray-500" />
+                <div className="text-2xl">Loading...</div>
+              </div>
+            )}
 
-        {!isLoading && getFiles.length > 0 && (
-          <>
-            <div className="flex items-center justify-between mb-8">
-              <h1 className="text-4xl font-semibold">Your Files</h1>
+            {!isLoading && getFiles.length === 0 && (
+              <div className="flex flex-col gap-4 w-full items-center mt-10">
+                <Image
+                  alt="Image of empty state"
+                  width="500"
+                  height="500"
+                  src="/empty.svg"
+                />
+                <div className="text-2xl text-gray-500 text-center">
+                  Let’s build together — upload a file to get started.
+                </div>
+                <div className="mt-2">
+                  <UploadButton />
+                </div>
+              </div>
+            )}
 
-              <UploadButton />
-            </div>
-            <div className="grid grid-cols-5 gap-4">
-              {getFiles?.map((file) => (
-                <FileCard key={file._id} file={file} />
-              ))}
-            </div>
-          </>
-        )}
+            {!isLoading && getFiles.length > 0 && (
+              <>
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-4xl font-semibold">Files</h1>
+                  <UploadButton />
+                </div>
+                <div className="grid grid-cols-5 gap-4">
+                  {getFiles.map((file) => (
+                    <FileCard key={file._id} file={file} />
+                  ))}
+                </div>
+              </>
+            )}
+          </TabsContent>
+
+          {/* ====== Folders Tab ====== */}
+          <TabsContent value="folders">
+            <FolderView orgId={orgId} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

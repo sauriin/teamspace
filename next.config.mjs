@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    remotePatterns: [{ hostname: "whimsical-cormorant-135.convex.cloud", }],
+    remotePatterns: [{ hostname: "whimsical-cormorant-135.convex.cloud" }],
   },
 };
 

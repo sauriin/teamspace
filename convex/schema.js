@@ -24,8 +24,19 @@ export default defineSchema({
     type: fileTypes,
     orgId: v.optional(v.string()),
     fileId: v.id("_storage"),
-  }).index("by_orgId", ["orgId"]),
+    folderId: v.optional(v.id("folders")),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_folderId", ["folderId"]),
 
+  folders: defineTable({
+    name: v.string(), // Folder name like "DAA"
+    orgId: v.optional(v.string()), // Same as files, to scope folders per org
+    createdAt: v.number(),
+    createdBy: v.optional(v.string()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_orgId_name", ["orgId", "name"]), // <- Add this
   users: defineTable({
     tokenIdentifier: v.string(),
     orgIds: v.array(v.string()),
