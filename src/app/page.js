@@ -7,21 +7,22 @@ import { UploadButton } from "@/_components/uploadButton";
 import { FileCard } from "@/_components/fileCard";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-import FolderView from "@/_components/folderView"; // ✅ You need to create this
+import FolderView from "@/_components/folderView";
+import Header from "../app/Header";
+import { useState } from "react";
 
 export default function Home() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { user, isLoaded: userLoaded } = useUser();
+  const [query, setQuery] = useState(""); // 👈 Search Query State
 
   const orgId = organization?.id ?? user?.id;
   const isClerkLoaded = orgLoaded && userLoaded;
 
   const getFiles = useQuery(
     api.files.getFiles,
-    isClerkLoaded && orgId ? { orgId } : "skip"
+    isClerkLoaded && orgId ? { orgId, query } : "skip"
   );
   const isLoading = getFiles === undefined;
 
@@ -31,6 +32,11 @@ export default function Home() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 pt-[150px]">
+      <div className="fixed top-5 left-0 right-0 z-50 px-3 sm:px-6 lg:px-8 pt-3">
+        <div className="max-w-7xl mx-auto">
+          <Header setQuery={setQuery} />
+        </div>
+      </div>
       <div className="max-w-7xl mx-auto">
         <Tabs defaultValue="files">
           <TabsList className="mb-6 text-lg">
@@ -60,7 +66,9 @@ export default function Home() {
                   src="/empty.svg"
                 />
                 <div className="text-2xl text-gray-500 text-center">
-                  Let’s build together — upload a file to get started.
+                  {query
+                    ? "No matching files found."
+                    : "Let’s build together — upload a file to get started."}
                 </div>
                 <div className="mt-2">
                   <UploadButton />
@@ -74,9 +82,14 @@ export default function Home() {
                   <h1 className="text-4xl font-semibold">Files</h1>
                   <UploadButton />
                 </div>
-                <div className="grid grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 transition-all duration-300 ease-in-out">
                   {getFiles.map((file) => (
-                    <FileCard key={file._id} file={file} />
+                    <div
+                      key={file._id}
+                      className="transform transition duration-200 hover:scale-[1.02]"
+                    >
+                      <FileCard file={file} />
+                    </div>
                   ))}
                 </div>
               </>
@@ -85,7 +98,7 @@ export default function Home() {
 
           {/* ====== Folders Tab ====== */}
           <TabsContent value="folders">
-            <FolderView orgId={orgId} />
+            <FolderView orgId={orgId} query={query} />
           </TabsContent>
         </Tabs>
       </div>

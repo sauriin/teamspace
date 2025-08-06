@@ -114,3 +114,22 @@ export const deleteFolder = mutation({
     await ctx.db.delete(folderId);
   },
 });
+
+const lowerQuery = query?.toLowerCase() ?? "";
+
+// Filter folders based on query
+const filteredFolders = lowerQuery
+  ? folders.filter((folder) => folder.name.toLowerCase().includes(lowerQuery))
+  : folders;
+
+// Filter files based on query (name or folder name)
+const filteredFiles = lowerQuery
+  ? files.filter(
+      (file) =>
+        file.name?.toLowerCase().includes(lowerQuery) ||
+        folders
+          .find((f) => f._id === file.folderId)
+          ?.name.toLowerCase()
+          .includes(lowerQuery)
+    )
+  : files;

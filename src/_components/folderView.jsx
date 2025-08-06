@@ -41,11 +41,7 @@ import { toast } from "sonner";
 import { FileCard } from "./fileCard";
 import { UploadButton } from "./uploadButton";
 
-export default function FolderView() {
-    const { organization } = useOrganization();
-    const { user } = useUser();
-    const orgId = organization?.id || user?.id;
-
+export default function FolderView({ orgId, query = "" }) {
     const folders = useQuery(api.folders.getFolders, orgId ? { orgId } : "skip");
     const files = useQuery(api.files.getFiles, orgId ? { orgId } : "skip");
 
@@ -62,7 +58,17 @@ export default function FolderView() {
         return <div className="p-4 text-muted-foreground">Loading...</div>;
     }
 
+    const lowerQuery = query.toLowerCase();
+
+    const filteredFolders = folders.filter((folder) =>
+        folder.name.toLowerCase().includes(lowerQuery)
+    );
+
     const selectedFiles = files.filter((file) => file.folderId === openFolderId);
+
+    const filteredFiles = selectedFiles.filter((file) =>
+        file.name.toLowerCase().includes(lowerQuery)
+    );
 
     const handleRename = async () => {
         if (newName && activeFolder) {
@@ -97,12 +103,11 @@ export default function FolderView() {
                         <UploadButton />
                     </div>
                     <div className="grid grid-cols-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {folders.map((folder) => (
+                        {filteredFolders.map((folder) => (
                             <Card
                                 key={folder._id}
                                 className="relative group p-4 cursor-pointer hover:bg-muted/50 transition"
                             >
-                                {/* Vertical menu */}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button
@@ -141,7 +146,6 @@ export default function FolderView() {
                                     </DropdownMenuContent>
                                 </DropdownMenu>
 
-                                {/* Folder icon and label */}
                                 <div
                                     onClick={() => setOpenFolderId(folder._id)}
                                     className="flex flex-col items-center justify-center h-full text-center space-y-2"
@@ -163,9 +167,9 @@ export default function FolderView() {
                             Back to Folders
                         </Button>
                     </div>
-                    {selectedFiles.length > 0 ? (
+                    {filteredFiles.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            {selectedFiles.map((file) => (
+                            {filteredFiles.map((file) => (
                                 <FileCard key={file._id} file={file} />
                             ))}
                         </div>

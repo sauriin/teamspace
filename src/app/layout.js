@@ -28,11 +28,6 @@ export default function RootLayout({ children }) {
       >
         <ConvexClientProvider>
           <Toaster />
-          <div className="fixed top-5 left-0 right-0 z-50 px-3 sm:px-6 lg:px-8 pt-3">
-            <div className="max-w-7xl mx-auto">
-              <Header />
-            </div>
-          </div>
           {children}
         </ConvexClientProvider>
       </body>

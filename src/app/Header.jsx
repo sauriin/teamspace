@@ -1,11 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search } from "lucide-react";
-import { OrganizationSwitcher, SignIn, SignInButton, UserButton } from "@clerk/nextjs";
+import { OrganizationSwitcher, SignInButton, UserButton } from "@clerk/nextjs";
+import SearchBar from "../_components/searchBar";
+import { useEffect, useMemo } from "react";
+import debounce from "lodash.debounce";
 
-const Header = () => {
-    const [focused, setFocused] = useState(false);
+const Header = ({ setQuery }) => {
+
+    const debouncedSetQuery = useMemo(
+        () => debounce((val) => setQuery(val), 300),
+        [setQuery]
+    );
+
+    const handleChange = (e) => {
+        debouncedSetQuery(e.target.value);
+    };
+
+    useEffect(() => {
+        return () => {
+            debouncedSetQuery.cancel(); // Cleanup
+        };
+    }, [debouncedSetQuery]);
 
     return (
         <div className="flex items-center justify-between rounded-full bg-[#3a2b5c] px-6 py-4 mb-10">
@@ -34,26 +49,7 @@ const Header = () => {
                 />
             </div>
             <div className="flex items-center gap-4">
-                <div className="relative transition-all duration-500 ease-in-out">
-                    <div
-                        className={`flex items-center gap-2 bg-white/10 rounded-full px-4 py-2 border border-white/20 transition-all duration-500 ease-in-out ${focused ? "w-80" : "w-40"
-                            }`}
-                        onClick={() => setFocused(true)}
-                    >
-                        <Search
-                            className={`transition-colors duration-300 ${focused ? "text-blue-400" : "text-white/60"
-                                }`}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Search"
-                            onFocus={() => setFocused(true)}
-                            onBlur={() => setFocused(false)}
-                            className={`bg-transparent text-white outline-none w-full transition-all duration-300 placeholder:transition-opacity placeholder:duration-300 placeholder:text-white/50 ${focused ? "placeholder:opacity-0" : "placeholder:opacity-100"
-                                }`}
-                        />
-                    </div>
-                </div>
+                <SearchBar setQuery={setQuery} onChange={handleChange} />
                 <UserButton />
             </div>
         </div>
