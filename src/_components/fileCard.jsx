@@ -131,12 +131,12 @@ export function FileCard({ file }) {
                     size="sm"
                     variant={isStarred ? "default" : "outline"} // solid when starred
                     onClick={toggleStarred}
-                    className={`gap-1 ${isStarred ? "border-yellow-500" : ""}`} // subtle cue
+                    className={`gap-1 ${isStarred ? "border-yellow-500 " : ""}`} // subtle cue
                     title={isStarred ? "Unstar" : "Star"}
                 >
                     {isStarred ? (
                         // show StarOff when starred
-                        <Star className="w-4 h-4 text-yellow-500" />
+                        <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
                     ) : (
                         // show Star when not starred
                         <Star className="w-4 h-4" />
