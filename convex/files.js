@@ -94,7 +94,7 @@ export const createFile = mutation({
 export const getFiles = query({
   args: {
     orgId: v.optional(v.string()),
-    query: v.optional(v.string()), // For searching File
+    query: v.optional(v.string()), // For searching
   },
   async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
@@ -107,21 +107,20 @@ export const getFiles = query({
     );
     if (!hasAccess) return [];
 
-    const files = await ctx.db
+    let files = await ctx.db
       .query("files")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
       .collect();
 
-    const query = args.query;
-
-    if (query) {
-      const lowerQuery = query.toLowerCase();
-      return files.filter((file) =>
+    // only optional search
+    if (args.query) {
+      const lowerQuery = args.query.toLowerCase();
+      files = files.filter((file) =>
         file.name.toLowerCase().includes(lowerQuery)
       );
-    } else {
-      return files;
     }
+
+    return files;
   },
 });
 

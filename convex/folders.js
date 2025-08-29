@@ -3,7 +3,6 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getUser } from "./users";
 
-// Mutation: Create a folder
 export const createFolder = mutation({
   args: {
     name: v.string(),
@@ -15,8 +14,8 @@ export const createFolder = mutation({
 
     const user = await getUser(ctx, identity.tokenIdentifier);
     const hasAccess =
-      user.orgIds.includes(args.orgId) ||
-      user.tokenIdentifier.includes(args.orgId);
+      user?.orgIds?.includes(args.orgId) ||
+      user?.tokenIdentifier?.includes(args.orgId);
 
     if (!hasAccess) throw new Error("Unauthorized");
 
@@ -28,7 +27,7 @@ export const createFolder = mutation({
       )
       .unique();
 
-    if (existing) return; // Folder already exists
+    if (existing) return; 
 
     await ctx.db.insert("folders", {
       name: args.name,
@@ -41,24 +40,33 @@ export const createFolder = mutation({
 
 // Query: Get all folders for an organization
 export const getFolders = query({
-  args: {
+  args: v.object({
     orgId: v.string(),
-  },
-  async handler(ctx, args) {
+    searchQuery: v.optional(v.string()),
+  }),
+  async handler(ctx, { orgId, searchQuery }) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
     const user = await getUser(ctx, identity.tokenIdentifier);
     const hasAccess =
-      user.orgIds.includes(args.orgId) ||
-      user.tokenIdentifier.includes(args.orgId);
+      user?.orgIds?.includes(orgId) || user?.tokenIdentifier?.includes(orgId);
 
     if (!hasAccess) return [];
 
-    return ctx.db
+    let folders = await ctx.db
       .query("folders")
-      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
       .collect();
+
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      folders = folders.filter((f) =>
+        f.name.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    return folders;
   },
 });
 
@@ -75,7 +83,7 @@ export const renameFolder = mutation({
     const folder = await ctx.db.get(args.folderId);
     if (!folder) throw new Error("Folder not found");
 
-    // Prevent renaming to a name that already exists in the same org
+    
     const existing = await ctx.db
       .query("folders")
       .withIndex("by_orgId_name", (q) =>
@@ -93,43 +101,24 @@ export const renameFolder = mutation({
   },
 });
 
-// Delete Folder (only if empty)
+// Delete Folder (delete all files inside)
 export const deleteFolder = mutation({
   args: {
     folderId: v.id("folders"),
   },
-  handler: async (ctx, { folderId }) => {
-    //Get all files in this folder
+  async handler(ctx, { folderId }) {
+    // Get all files in this folder
     const files = await ctx.db
       .query("files")
       .withIndex("by_folderId", (q) => q.eq("folderId", folderId))
       .collect();
 
-    //Delete each file in the folder
+    // Delete each file
     for (const file of files) {
       await ctx.db.delete(file._id);
     }
 
-    //Delete the folder itself
+    // Delete the folder itself
     await ctx.db.delete(folderId);
   },
 });
-
-const lowerQuery = query?.toLowerCase() ?? "";
-
-// Filter folders based on query
-const filteredFolders = lowerQuery
-  ? folders.filter((folder) => folder.name.toLowerCase().includes(lowerQuery))
-  : folders;
-
-// Filter files based on query (name or folder name)
-const filteredFiles = lowerQuery
-  ? files.filter(
-      (file) =>
-        file.name?.toLowerCase().includes(lowerQuery) ||
-        folders
-          .find((f) => f._id === file.folderId)
-          ?.name.toLowerCase()
-          .includes(lowerQuery)
-    )
-  : files;

@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -26,7 +25,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 
 // ✅ Schema
 const formSchema = z.object({
@@ -40,7 +39,6 @@ export function UploadButton() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { user, isLoaded: userLoaded } = useUser();
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-
 
   const [isFileDialogOpen, setIsFileDialogOpen] = useState(false);
 
@@ -56,7 +54,6 @@ export function UploadButton() {
 
   const orgId = organization?.id ?? user?.id;
   const isClerkLoaded = orgLoaded && userLoaded;
-
 
   const createFile = useMutation(api.files.createFile);
 
@@ -87,9 +84,8 @@ export function UploadButton() {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
       "application/vnd.ms-powerpoint": "ppt",
       "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
-      "text/plain": "txt"
+      "text/plain": "txt",
     };
-
 
     try {
       await createFile({
@@ -124,25 +120,28 @@ export function UploadButton() {
         form.reset();
       }}
     >
+      {/* 👇 Custom trigger = Your Big Upload Card */}
       <DialogTrigger asChild>
-        <Button className="ml-auto">Upload File</Button>
+        <div
+          role="button"
+          tabIndex={0}
+          className="w-44 max-w-sm border-2 border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-900 hover:border-blue-500 transition cursor-pointer"
+        >
+          <Upload size={28} className="text-gray-400 mb-3" />
+          <p className="text-gray-300 text-sm font-medium">Upload files</p>
+        </div>
       </DialogTrigger>
 
       <DialogContent className="bg-white text-black border-gray-300">
         <DialogHeader>
-          <DialogTitle className="mb-8 text-xl">
-            Upload Your File
-          </DialogTitle>
+          <DialogTitle className="mb-8 text-xl">Upload Your File</DialogTitle>
           <DialogDescription>
             This file will be accessible by anyone in your organization.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-8"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
               control={form.control}
               name="title"
@@ -171,16 +170,16 @@ export function UploadButton() {
               )}
             />
 
-            <Button
+            <button
               type="submit"
               disabled={form.formState.isSubmitting}
-              className="flex gap-1"
+              className="flex gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
             >
               {form.formState.isSubmitting && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
               Submit
-            </Button>
+            </button>
           </form>
         </Form>
       </DialogContent>

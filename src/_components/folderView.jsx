@@ -42,34 +42,36 @@ import { FileCard } from "./fileCard";
 import { UploadButton } from "./uploadButton";
 
 export default function FolderView({ orgId, query = "" }) {
-    const folders = useQuery(api.folders.getFolders, orgId ? { orgId } : "skip");
-    const files = useQuery(api.files.getFiles, orgId ? { orgId } : "skip");
+    const folders = useQuery(
+        api.folders.getFolders,
+        orgId ? { orgId, searchQuery: query } : "skip"
+    );
 
+    const files = useQuery(
+        api.files.getFiles,
+        orgId ? { orgId, query } : "skip"
+    );
+
+    // Mutations for deleting and renaming folders
     const deleteFolder = useMutation(api.folders.deleteFolder);
     const renameFolder = useMutation(api.folders.renameFolder);
 
-    const [openFolderId, setOpenFolderId] = useState(null);
-    const [activeFolder, setActiveFolder] = useState(null);
-    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-    const [isRenameOpen, setIsRenameOpen] = useState(false);
-    const [newName, setNewName] = useState("");
+    // Local state management
+    const [openFolderId, setOpenFolderId] = useState(null); // currently opened folder
+    const [activeFolder, setActiveFolder] = useState(null); // folder selected for rename/delete
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false); // delete confirmation modal
+    const [isRenameOpen, setIsRenameOpen] = useState(false); // rename dialog
+    const [newName, setNewName] = useState(""); // new folder name input
 
+    // Loading state while queries are pending
     if (!folders || !files) {
         return <div className="p-4 text-muted-foreground">Loading...</div>;
     }
 
-    const lowerQuery = query.toLowerCase();
-
-    const filteredFolders = folders.filter((folder) =>
-        folder.name.toLowerCase().includes(lowerQuery)
-    );
-
+    // Only show files that belong to the currently open folder
     const selectedFiles = files.filter((file) => file.folderId === openFolderId);
 
-    const filteredFiles = selectedFiles.filter((file) =>
-        file.name.toLowerCase().includes(lowerQuery)
-    );
-
+    /* Handles folder rename mutation */
     const handleRename = async () => {
         if (newName && activeFolder) {
             try {
@@ -83,7 +85,9 @@ export default function FolderView({ orgId, query = "" }) {
         }
     };
 
+    /*Handles folder delete mutation */
     const handleDelete = async () => {
+        if (!activeFolder) return;
         try {
             await deleteFolder({ folderId: activeFolder._id });
             toast.success("Folder deleted.");
@@ -96,30 +100,31 @@ export default function FolderView({ orgId, query = "" }) {
 
     return (
         <div className="p-4 space-y-10">
+            {/* If no folder is open, show the folder grid */}
             {!openFolderId ? (
                 <>
-                    <div className="flex items-center justify-between mb-8">
-                        <h1 className="text-4xl font-semibold">Folders</h1>
-                        <UploadButton />
-                    </div>
-                    <div className="grid grid-cols-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {filteredFolders.map((folder) => (
+
+                    {/* Folder grid */}
+                    <div className="grid grid-cols-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                        {folders.map((folder) => (
                             <Card
                                 key={folder._id}
                                 className="relative group p-4 cursor-pointer hover:bg-muted/50 transition"
                             >
+                                {/* Dropdown menu (Rename, Delete) */}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
-                                            onClick={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()} // prevent opening folder when clicking menu
                                         >
                                             <MoreVertical className="w-4 h-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                        {/* Rename option */}
                                         <DropdownMenuItem
                                             className="flex gap-2 items-center"
                                             onClick={(e) => {
@@ -132,6 +137,7 @@ export default function FolderView({ orgId, query = "" }) {
                                             <Pencil className="w-4 h-4" />
                                             Rename
                                         </DropdownMenuItem>
+                                        {/* Delete option */}
                                         <DropdownMenuItem
                                             className="flex gap-2 items-center text-red-600"
                                             onClick={(e) => {
@@ -146,6 +152,7 @@ export default function FolderView({ orgId, query = "" }) {
                                     </DropdownMenuContent>
                                 </DropdownMenu>
 
+                                {/* Folder card content */}
                                 <div
                                     onClick={() => setOpenFolderId(folder._id)}
                                     className="flex flex-col items-center justify-center h-full text-center space-y-2"
@@ -158,18 +165,20 @@ export default function FolderView({ orgId, query = "" }) {
                     </div>
                 </>
             ) : (
+                /* If a folder is open, show files inside it */
                 <>
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold text-white">
-                            Files in {folders.find(f => f._id === openFolderId)?.name}
+                        <h2 className="text-3xl font-semibold text-white">
+                            {folders.find((f) => f._id === openFolderId)?.name}
                         </h2>
                         <Button variant="outline" onClick={() => setOpenFolderId(null)}>
                             Back to Folders
                         </Button>
                     </div>
-                    {filteredFiles.length > 0 ? (
+                    {/* Files inside folder */}
+                    {selectedFiles.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            {filteredFiles.map((file) => (
+                            {selectedFiles.map((file) => (
                                 <FileCard key={file._id} file={file} />
                             ))}
                         </div>
@@ -179,7 +188,7 @@ export default function FolderView({ orgId, query = "" }) {
                 </>
             )}
 
-            {/* Rename Dialog */}
+            {/* Rename Folder Dialog */}
             <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -196,20 +205,19 @@ export default function FolderView({ orgId, query = "" }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete AlertDialog */}
+            {/* Delete Folder Confirmation Dialog */}
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Folder</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete this folder? This action cannot be undone.
+                            Are you sure you want to delete this folder? This action cannot
+                            be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete}>
-                            Delete
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

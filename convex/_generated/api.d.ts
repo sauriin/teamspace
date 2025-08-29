@@ -17,6 +17,8 @@ import type * as clerk from "../clerk.js";
 import type * as files from "../files.js";
 import type * as folders from "../folders.js";
 import type * as http from "../http.js";
+import type * as starred from "../starred.js";
+import type * as trash from "../trash.js";
 import type * as users from "../users.js";
 
 /**
@@ -32,6 +34,8 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   folders: typeof folders;
   http: typeof http;
+  starred: typeof starred;
+  trash: typeof trash;
   users: typeof users;
 }>;
 export declare const api: FilterApi<

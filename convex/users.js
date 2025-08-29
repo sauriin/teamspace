@@ -3,6 +3,8 @@ import { internalMutation } from "./_generated/server";
 
 // Utility function to get user by tokenIdentifier
 export async function getUser(ctx, tokenIdentifier) {
+  if (!tokenIdentifier) return null;
+
   const user = await ctx.db
     .query("users")
     .withIndex("by_tokenIdentifier", (q) =>
@@ -10,11 +12,7 @@ export async function getUser(ctx, tokenIdentifier) {
     )
     .first();
 
-  if (!user) {
-    throw new ConvexError("Expected User to be defined");
-  }
-
-  return user;
+  return user ?? null;
 }
 
 // Mutation to create a user

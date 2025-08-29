@@ -1,13 +1,6 @@
-import { useMutation, useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
-
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useUser, useOrganization } from "@clerk/nextjs";
 
 import {
     Card,
@@ -16,23 +9,8 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
 import { Button } from "@/components/ui/button";
-
 import {
-    MoreVertical,
-    Trash,
     Download,
     FileImage,
     FileText,
@@ -40,12 +18,12 @@ import {
     File,
     ChartNoAxesGantt,
     Presentation,
+    Star,
+    StarOff,
 } from "lucide-react";
-
-import { toast } from "sonner";
 import Image from "next/image";
+import { toast } from "sonner";
 
-// 🔁 Icon map based on file type
 const fileTypeIcons = {
     image: FileImage,
     pdf: FileText,
@@ -60,78 +38,48 @@ const fileTypeIcons = {
     default: File,
 };
 
-function FileCardActions({ file }) {
-    const deleteFile = useMutation(api.files.deleteFile);
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-    const fileUrl = useQuery(
-        api.files.getFileUrl,
-        file?.fileId ? { storageId: file.fileId } : "skip"
-    );
-
-    const handleDownload = () => {
-        if (!fileUrl) {
-            console.error("File URL not available.");
-            return;
-        }
-        const anchor = document.createElement("a");
-        anchor.href = fileUrl;
-        anchor.download = file.name;
-        anchor.click();
-    };
-
-    return (
-        <>
-            <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete this file.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={async () => {
-                                try {
-                                    await deleteFile({ fileId: file._id });
-                                    toast.success("File deleted successfully.");
-                                } catch (err) {
-                                    console.error("Failed to delete file:", err);
-                                    toast.error("Failed to delete the file.");
-                                }
-                            }}
-                        >
-                            Continue
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <DropdownMenu>
-                <DropdownMenuTrigger>
-                    <MoreVertical />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuItem
-                        onClick={() => setIsConfirmOpen(true)}
-                        className="flex gap-1 items-center"
-                    >
-                        <Trash className="h-4 w-4" />
-                        Delete
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </>
-    );
-}
-
 export function FileCard({ file }) {
     const Icon = fileTypeIcons[file.type] || fileTypeIcons.default;
+
+    // get download URL for preview/download
     const fileUrl = useQuery(
         api.files.getFileUrl,
         file?.fileId ? { storageId: file.fileId } : "skip"
     );
+
+    const { user } = useUser();
+    const userId = user?.id;
+    const { organization } = useOrganization();
+    const orgId = organization?.id ?? userId; // use org or personal workspace
+
+    // load starred files (returns file docs, not rows)
+    const starredFiles = useQuery(api.starred.getStarred, orgId ? { orgId } : "skip");
+
+    // mutations for star/unstar
+    const addStarred = useMutation(api.starred.addStarred);
+    const removeStarred = useMutation(api.starred.removeStarred);
+
+    // check if this file is starred (compare file._id to returned file docs)
+    const isStarred = !!starredFiles?.some((f) => f._id === file._id);
+
+    // toggle star state
+    const toggleStarred = async () => {
+        try {
+            if (!orgId) {
+                toast.error("Organization not identified.");
+                return;
+            }
+            if (isStarred) {
+                await removeStarred({ fileId: file._id, orgId });
+                toast.success("Removed from starred");
+            } else {
+                await addStarred({ fileId: file._id, orgId });
+                toast.success("Added to starred");
+            }
+        } catch {
+            toast.error("Failed to update starred");
+        }
+    };
 
     return (
         <Card className="w-full max-w-xs p-2">
@@ -140,9 +88,6 @@ export function FileCard({ file }) {
                     <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
                     <span className="truncate">{file.name}</span>
                 </CardTitle>
-                <div className="absolute right-2 top-2">
-                    <FileCardActions file={file} />
-                </div>
             </CardHeader>
 
             <CardContent>
@@ -166,7 +111,7 @@ export function FileCard({ file }) {
                 )}
             </CardContent>
 
-            <CardFooter className="px-2 py-2">
+            <CardFooter className="px-2 py-2 flex justify-between">
                 <Button
                     size="sm"
                     className="justify-center gap-1 text-sm"
@@ -180,6 +125,22 @@ export function FileCard({ file }) {
                 >
                     <Download className="w-4 h-4" />
                     Download
+                </Button>
+
+                <Button
+                    size="sm"
+                    variant={isStarred ? "default" : "outline"} // solid when starred
+                    onClick={toggleStarred}
+                    className={`gap-1 ${isStarred ? "border-yellow-500" : ""}`} // subtle cue
+                    title={isStarred ? "Unstar" : "Star"}
+                >
+                    {isStarred ? (
+                        // show StarOff when starred
+                        <StarOff className="w-4 h-4 text-yellow-500" />
+                    ) : (
+                        // show Star when not starred
+                        <Star className="w-4 h-4" />
+                    )}
                 </Button>
             </CardFooter>
         </Card>
