@@ -136,7 +136,7 @@ export function FileCard({ file }) {
                 >
                     {isStarred ? (
                         // show StarOff when starred
-                        <StarOff className="w-4 h-4 text-yellow-500" />
+                        <Star className="w-4 h-4 text-yellow-500" />
                     ) : (
                         // show Star when not starred
                         <Star className="w-4 h-4" />
