@@ -23,28 +23,27 @@ const DocsPage = () => {
   const { user, isLoaded: userLoaded } = useUser();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
-  const [query, setQuery] = useState(""); // search text
-  const [menuState, setMenuState] = useState({ section: "home", secondary: "All files" }); // left menu
-  const [selectedFolderId, setSelectedFolderId] = useState(null); // current folder id
+  const [query, setQuery] = useState("");
+  const [menuState, setMenuState] = useState({
+    section: "home",
+    secondary: "All files",
+  });
 
-  const orgId = organization?.id ?? user?.id; // org id or personal workspace id
-  const isClerkLoaded = orgLoaded && userLoaded && authLoaded; // clerk readiness
+  const orgId = organization?.id ?? user?.id;
+  const isClerkLoaded = orgLoaded && userLoaded && authLoaded;
 
-  // all files in org (with search)
   const allFiles = useQuery(
     api.files.getFiles,
     isClerkLoaded && isSignedIn && orgId ? { orgId, query } : "skip"
   );
 
-  // files in a folder
-  const folderFiles = useQuery(
-    api.files.getFilesByFolder,
-    selectedFolderId ? { folderId: selectedFolderId } : "skip"
-  );
-
-  // starred files list
   const starredFiles = useQuery(
     api.starred.getStarred,
+    isClerkLoaded && isSignedIn && orgId ? { orgId } : "skip"
+  );
+
+  const trashedFiles = useQuery(
+    api.trashBin.getTrashedFiles,
     isClerkLoaded && isSignedIn && orgId ? { orgId } : "skip"
   );
 
@@ -56,20 +55,16 @@ const DocsPage = () => {
     );
   if (!isSignedIn) return <LandingPage />;
 
-  // loading flags
   const isLoading = allFiles === undefined;
-  const isFolderLoading = folderFiles === undefined;
   const isStarredLoading = starredFiles === undefined;
+  const isTrashLoading = trashedFiles === undefined;
 
-  // data presence flags
   const hasFiles = !isLoading && allFiles?.length > 0;
-  const hasFolderFiles = !isFolderLoading && folderFiles?.length > 0;
   const hasStarred = !isStarredLoading && starredFiles?.length > 0;
+  const hasTrash = !isTrashLoading && trashedFiles?.length > 0;
 
   const renderContent = () => {
-    // HOME section
     if (menuState.section === "home") {
-      // All files
       if (menuState.secondary === "All files") {
         if (!isLoading && !hasFiles) {
           return (
@@ -85,9 +80,8 @@ const DocsPage = () => {
         return <FileGrid files={allFiles} />;
       }
 
-      // Starred
       if (menuState.secondary === "Starred") {
-        if (isStarredLoading) return <Loader />; // show loader while fetching
+        if (isStarredLoading) return <Loader />;
         if (!hasStarred) {
           return (
             <EmptyState
@@ -96,50 +90,36 @@ const DocsPage = () => {
               width="210"
               height="210"
               gray
-              small
             />
           );
         }
         return <FileGrid files={starredFiles} />;
       }
 
-      // Trash (placeholder)
       if (menuState.secondary === "Trash") {
-        return (
-          <EmptyState
-            message="Your trash is empty. Keep it that way for peace of mind."
-            icon="/trash.svg"
-            gray
-          />
-        );
+        if (isTrashLoading) return <Loader />;
+        if (!hasTrash) {
+          return (
+            <EmptyState
+              message="Your trash is empty. Keep it that way for peace of mind."
+              icon="/trash.svg"
+              gray
+            />
+          );
+        }
+        return <FileGrid files={trashedFiles} />;
       }
     }
 
-    // FOLDERS section
+    // FOLDERS section UI remains but logic is removed
     if (menuState.section === "folders") {
-      if (!selectedFolderId) {
-        return (
-          <EmptyState
-            message="No folders created yet. Start by making one."
-            icon="/empty.svg"
-            gray
-          />
-        );
-      }
-
-      if (!isFolderLoading && (!folderFiles || folderFiles.length === 0)) {
-        return (
-          <EmptyState
-            message="This folder is empty. Upload or move files here."
-            icon="/empty.svg"
-            gray
-          />
-        );
-      }
-
-      if (hasFolderFiles) {
-        return <FolderView orgId={orgId} query={query} folderFiles={folderFiles} />;
-      }
+      return (
+        <EmptyState
+          message="No folders created yet. Start by making one."
+          icon="/empty.svg"
+          gray
+        />
+      );
     }
 
     return null;
@@ -148,7 +128,9 @@ const DocsPage = () => {
   return (
     <div className="flex h-screen">
       <Navbar
-        onMenuChange={(section, secondary) => setMenuState({ section, secondary })}
+        onMenuChange={(section, secondary) =>
+          setMenuState({ section, secondary })
+        }
       />
       <div className="flex flex-col w-[100%] bg-black">
         <header className="h-14 flex items-center px-6 sticky top-0 z-10 bg-black mt-4">
@@ -162,7 +144,6 @@ const DocsPage = () => {
             />
           </div>
 
-          {/* Clerk org + user controls */}
           <div className="flex items-center gap-4 ml-4">
             <OrganizationSwitcher
               appearance={{
@@ -200,17 +181,31 @@ const DocsPage = () => {
 const FileGrid = ({ files }) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-8">
     {files?.map((file) => (
-      <div key={file._id} className="transform transition duration-200 hover:scale-[1.02]">
+      <div
+        key={file._id}
+        className="transform transition duration-200 hover:scale-[1.02]"
+      >
         <FileCard file={file} />
       </div>
     ))}
   </div>
 );
 
-const EmptyState = ({ message, icon = "/empty.svg", gray = false, width = 450, height = 450 }) => (
+const EmptyState = ({
+  message,
+  icon = "/empty.svg",
+  gray = false,
+  width = 450,
+  height = 450,
+}) => (
   <div className="flex flex-col items-center justify-center mt-10 gap-4">
     <Image src={icon} alt="Empty" width={width} height={height} />
-    <p className={`text-lg text-center ${gray ? "text-gray-400" : "text-gray-500"}`}>{message}</p>
+    <p
+      className={`text-lg text-center ${gray ? "text-gray-400" : "text-gray-500"
+        }`}
+    >
+      {message}
+    </p>
   </div>
 );
 

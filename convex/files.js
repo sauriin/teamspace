@@ -16,25 +16,6 @@ async function hasAccessToOrg(ctx, tokenIdentifier, orgId) {
   return user.orgIds.includes(orgId) || user.tokenIdentifier.includes(orgId);
 }
 
-// Extract prefix/keyword from file name
-function extractKeyword(fileName) {
-  const base = fileName.replace(/\.[^/.]+$/, ""); // Remove extension
-  const keyword = base.split(/[_\s-]/)[0]; // Take first segment
-  return keyword;
-}
-
-const clusteredTypes = [
-  "pdf",
-  "doc",
-  "docx",
-  "txt",
-  "csv",
-  "xls",
-  "xlsx",
-  "ppt",
-  "pptx",
-];
-
 // Create File Mutation
 export const createFile = mutation({
   args: {
@@ -56,36 +37,13 @@ export const createFile = mutation({
     if (!hasAccess)
       throw new ConvexError("You don't have access to this Organization.");
 
-    let folderId = undefined;
-
-    if (clusteredTypes.includes(args.type)) {
-      const keyword = extractKeyword(args.name);
-
-      let folder = await ctx.db
-        .query("folders")
-        .withIndex("by_orgId_name", (q) =>
-          q.eq("orgId", args.orgId).eq("name", keyword)
-        )
-        .unique();
-
-      if (!folder) {
-        folderId = await ctx.db.insert("folders", {
-          name: keyword,
-          orgId: args.orgId,
-          createdAt: Date.now(),
-          createdBy: identity.subject,
-        });
-      } else {
-        folderId = folder._id;
-      }
-    }
-
     await ctx.db.insert("files", {
       name: args.name,
       orgId: args.orgId,
       fileId: args.fileId,
       type: args.type,
-      folderId, // optional folder reference
+      isDeleted: false, // always set false on creation
+      deletedAt: undefined, // cleanup timestamp
     });
   },
 });
@@ -94,7 +52,7 @@ export const createFile = mutation({
 export const getFiles = query({
   args: {
     orgId: v.optional(v.string()),
-    query: v.optional(v.string()), // For searching
+    query: v.optional(v.string()),
   },
   async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
@@ -110,9 +68,14 @@ export const getFiles = query({
     let files = await ctx.db
       .query("files")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("isDeleted"), false),
+          q.eq(q.field("isDeleted"), undefined) // support legacy rows
+        )
+      )
       .collect();
 
-    // only optional search
     if (args.query) {
       const lowerQuery = args.query.toLowerCase();
       files = files.filter((file) =>
@@ -156,17 +119,5 @@ export const getFileUrl = query({
     const url = await ctx.storage.getUrl(storageId);
     if (!url) throw new ConvexError("Failed to retrieve download URL.");
     return url;
-  },
-});
-
-export const getFilesByFolder = query({
-  args: {
-    folderId: v.id("folders"),
-  },
-  async handler(ctx, args) {
-    return await ctx.db
-      .query("files")
-      .withIndex("by_folderId", (q) => q.eq("folderId", args.folderId))
-      .collect();
   },
 });

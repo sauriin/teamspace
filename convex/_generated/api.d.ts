@@ -19,6 +19,7 @@ import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as starred from "../starred.js";
 import type * as trash from "../trash.js";
+import type * as trashBin from "../trashBin.js";
 import type * as users from "../users.js";
 
 /**
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   starred: typeof starred;
   trash: typeof trash;
+  trashBin: typeof trashBin;
   users: typeof users;
 }>;
 export declare const api: FilterApi<

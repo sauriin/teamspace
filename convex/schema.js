@@ -21,23 +21,20 @@ export default defineSchema({
     type: fileTypes,
     orgId: v.optional(v.string()),
     fileId: v.id("_storage"),
-    folderId: v.optional(v.id("folders")),
     isDeleted: v.optional(v.boolean()),
     deletedAt: v.optional(v.number()),
   })
     .index("by_orgId", ["orgId"])
-    .index("by_folderId", ["folderId"])
     .index("by_isDeleted", ["isDeleted"]),
-
   // folders table
-  folders: defineTable({
-    name: v.string(),
-    orgId: v.optional(v.string()),
-    createdAt: v.number(),
-    createdBy: v.optional(v.string()),
-  })
-    .index("by_orgId", ["orgId"])
-    .index("by_orgId_name", ["orgId", "name"]),
+  // folders: defineTable({
+  //   name: v.string(),
+  //   orgId: v.optional(v.string()),
+  //   createdAt: v.number(),
+  //   createdBy: v.optional(v.string()),
+  // })
+  //   .index("by_orgId", ["orgId"])
+  //   .index("by_orgId_name", ["orgId", "name"]),
 
   // users table (Clerk user mapping)
   users: defineTable({
