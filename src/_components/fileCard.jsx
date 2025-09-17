@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useUser, useOrganization } from "@clerk/nextjs";
+import { useState } from "react";
 
 import {
     Card,
@@ -22,6 +23,7 @@ import {
     MoreVertical,
     Trash2,
     RotateCcw,
+    Info,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -32,6 +34,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 
 // file type icons
 const fileTypeIcons = {
@@ -49,31 +59,39 @@ const fileTypeIcons = {
 };
 
 export function FileCard({ file }) {
+    const [showDetails, setShowDetails] = useState(false);
     const Icon = fileTypeIcons[file.type] || fileTypeIcons.default;
 
+    // get file url
     const fileUrl = useQuery(
         api.files.getFileUrl,
         file?.fileId ? { storageId: file.fileId } : "skip"
     );
 
+    // get user and org
     const { user } = useUser();
     const userId = user?.id;
     const { organization } = useOrganization();
     const orgId = organization?.id ?? userId;
 
-    const starredFiles = useQuery(api.starred.getStarred, orgId ? { orgId } : "skip");
+    // starred files
+    const starredFiles = useQuery(
+        api.starred.getStarred,
+        orgId ? { orgId } : "skip"
+    );
 
+    // mutations
     const addStarred = useMutation(api.starred.addStarred);
     const removeStarred = useMutation(api.starred.removeStarred);
-
     const moveToTrash = useMutation(api.trashBin.moveToTrash);
     const restoreFile = useMutation(api.trashBin.restoreFile);
     const permanentlyDelete = useMutation(api.trashBin.permanentlyDeleteFile);
 
+    // states
     const isStarred = !!starredFiles?.some((f) => f._id === file._id);
-    const isTrashed = file.isDeleted; // ✅ check if file is in trash
+    const isTrashed = file.isDeleted;
 
-    // ⭐ toggle star
+    // toggle star
     const toggleStarred = async () => {
         try {
             if (!orgId) {
@@ -92,7 +110,7 @@ export function FileCard({ file }) {
         }
     };
 
-    // 🗑️ move to trash
+    // move to trash
     const handleMoveToTrash = async () => {
         try {
             await moveToTrash({ fileId: file._id });
@@ -102,7 +120,7 @@ export function FileCard({ file }) {
         }
     };
 
-    // 🔄 restore file
+    // restore file
     const handleRestore = async () => {
         try {
             await restoreFile({ fileId: file._id });
@@ -112,7 +130,7 @@ export function FileCard({ file }) {
         }
     };
 
-    // ❌ permanently delete file
+    // delete permanently
     const handlePermanentDelete = async () => {
         try {
             await permanentlyDelete({ fileId: file._id });
@@ -123,110 +141,148 @@ export function FileCard({ file }) {
     };
 
     return (
-        <Card className="w-full max-w-xs p-2">
-            <CardHeader className="relative pb-1 pt-1 px-2 space-y-1">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-sm font-medium truncate">
-                        <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="truncate">{file.name}</span>
-                    </CardTitle>
+        <>
+            {/* File card */}
+            <Card className="w-full max-w-xs p-2">
+                <CardHeader className="relative pb-1 pt-1 px-2 space-y-1">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-sm font-medium truncate">
+                            <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{file.name}</span>
+                        </CardTitle>
 
-                    {/* ⋮ Dropdown menu */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            {isTrashed ? (
-                                <>
-                                    <DropdownMenuItem onClick={handleRestore}>
-                                        <RotateCcw className="w-4 h-4 mr-2" />
-                                        Restore
-                                    </DropdownMenuItem>
+                        {/* menu */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {/* details */}
+                                <DropdownMenuItem
+                                    onSelect={(e) => {
+                                        e.preventDefault(); // prevents dropdown from auto-closing issues
+                                        setShowDetails(true);
+                                    }}
+                                >
+                                    <Info className="w-4 h-4 mr-2" />
+                                    Details
+                                </DropdownMenuItem>
+
+                                {/* trash options */}
+                                {isTrashed ? (
+                                    <>
+                                        <DropdownMenuItem onClick={handleRestore}>
+                                            <RotateCcw className="w-4 h-4 mr-2" />
+                                            Restore
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="text-red-600"
+                                            onClick={handlePermanentDelete}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Delete Permanently
+                                        </DropdownMenuItem>
+                                    </>
+                                ) : (
                                     <DropdownMenuItem
                                         className="text-red-600"
-                                        onClick={handlePermanentDelete}
+                                        onClick={handleMoveToTrash}
                                     >
                                         <Trash2 className="w-4 h-4 mr-2" />
-                                        Delete Permanently
+                                        Move to Trash
                                     </DropdownMenuItem>
-                                </>
-                            ) : (
-                                <DropdownMenuItem
-                                    className="text-red-600"
-                                    onClick={handleMoveToTrash}
-                                >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Move to Trash
-                                </DropdownMenuItem>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </CardHeader>
-
-            <CardContent>
-                {fileUrl && file.type?.toLowerCase() === "image" ? (
-                    <div className="w-full h-48 relative flex items-center justify-center bg-gray-900 rounded-md overflow-hidden">
-                        <Image
-                            alt={file.name}
-                            src={fileUrl}
-                            fill
-                            className="object-contain"
-                            sizes="200px"
-                            onError={() => {
-                                toast.error(`Could not load image: ${file.name}`);
-                            }}
-                        />
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
-                ) : (
-                    <div className="w-full h-48 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-md text-muted-foreground">
-                        <Icon className="w-12 h-12 mb-2" />
+                </CardHeader>
+
+                {/* preview */}
+                <CardContent>
+                    {fileUrl && file.type?.toLowerCase() === "image" ? (
+                        <div className="w-full h-48 relative flex items-center justify-center bg-gray-900 rounded-md overflow-hidden">
+                            <Image
+                                alt={file.name}
+                                src={fileUrl}
+                                fill
+                                className="object-contain"
+                                sizes="200px"
+                                onError={() => {
+                                    toast.error(`Could not load image: ${file.name}`);
+                                }}
+                            />
+                        </div>
+                    ) : (
+                        <div className="w-full h-48 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-md text-muted-foreground">
+                            <Icon className="w-12 h-12 mb-2" />
+                        </div>
+                    )}
+                </CardContent>
+
+                {/* footer */}
+                <CardFooter className="px-2 py-2 flex justify-between">
+                    {isTrashed ? (
+                        <p className="text-xs text-muted-foreground">In Trash</p>
+                    ) : (
+                        <>
+                            {/* download */}
+                            <Button
+                                size="sm"
+                                className="justify-center gap-1 text-sm"
+                                onClick={() => {
+                                    if (!fileUrl) {
+                                        toast.error("File URL not available.");
+                                        return;
+                                    }
+                                    window.open(fileUrl, "_blank");
+                                }}
+                            >
+                                <Download className="w-4 h-4" />
+                                Download
+                            </Button>
+
+                            {/* star */}
+                            <Button
+                                size="sm"
+                                variant={isStarred ? "default" : "outline"}
+                                onClick={toggleStarred}
+                                className={`gap-1 ${isStarred ? "border-yellow-500 " : ""}`}
+                                title={isStarred ? "Unstar" : "Star"}
+                            >
+                                {isStarred ? (
+                                    <Star
+                                        className="w-4 h-4 text-yellow-500"
+                                        fill="currentColor"
+                                    />
+                                ) : (
+                                    <Star className="w-4 h-4" />
+                                )}
+                            </Button>
+                        </>
+                    )}
+                </CardFooter>
+            </Card>
+
+            {/* details dialog */}
+            <Dialog open={showDetails} onOpenChange={setShowDetails}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>File Details</DialogTitle>
+                        <DialogDescription>
+                            Information about the selected file.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 text-sm">
+                        <p><strong>Name:</strong> {file.name}</p>
+                        <p><strong>Type:</strong> {file.type}</p>
+                        <p><strong>Created At:</strong> {new Date(file._creationTime).toLocaleString()}</p>
+                        <p><strong>Created By:</strong> {file.createdByName}</p>
                     </div>
-                )}
-            </CardContent>
+                </DialogContent>
+            </Dialog>
 
-            <CardFooter className="px-2 py-2 flex justify-between">
-                {isTrashed ? (
-                    <p className="text-xs text-muted-foreground">In Trash</p>
-                ) : (
-                    <>
-                        <Button
-                            size="sm"
-                            className="justify-center gap-1 text-sm"
-                            onClick={() => {
-                                if (!fileUrl) {
-                                    toast.error("File URL not available.");
-                                    return;
-                                }
-                                window.open(fileUrl, "_blank");
-                            }}
-                        >
-                            <Download className="w-4 h-4" />
-                            Download
-                        </Button>
-
-                        <Button
-                            size="sm"
-                            variant={isStarred ? "default" : "outline"}
-                            onClick={toggleStarred}
-                            className={`gap-1 ${isStarred ? "border-yellow-500 " : ""}`}
-                            title={isStarred ? "Unstar" : "Star"}
-                        >
-                            {isStarred ? (
-                                <Star
-                                    className="w-4 h-4 text-yellow-500"
-                                    fill="currentColor"
-                                />
-                            ) : (
-                                <Star className="w-4 h-4" />
-                            )}
-                        </Button>
-                    </>
-                )}
-            </CardFooter>
-        </Card>
+        </>
     );
 }

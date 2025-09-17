@@ -10,10 +10,9 @@ import {
 } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { FolderPlus, Loader2 } from "lucide-react";
+import { Loader2, FolderPlus, Search } from "lucide-react";
 import { UploadButton } from "@/_components/uploadButton";
 import { FileCard } from "@/_components/fileCard";
-import FolderView from "@/_components/folderView";
 import LandingPage from "@/_components/landingPage";
 import Navbar from "../Navbar";
 import Image from "next/image";
@@ -53,6 +52,7 @@ const DocsPage = () => {
         Loading...
       </div>
     );
+
   if (!isSignedIn) return <LandingPage />;
 
   const isLoading = allFiles === undefined;
@@ -111,17 +111,6 @@ const DocsPage = () => {
       }
     }
 
-    // FOLDERS section UI remains but logic is removed
-    if (menuState.section === "folders") {
-      return (
-        <EmptyState
-          message="No folders created yet. Start by making one."
-          icon="/empty.svg"
-          gray
-        />
-      );
-    }
-
     return null;
   };
 
@@ -132,16 +121,20 @@ const DocsPage = () => {
           setMenuState({ section, secondary })
         }
       />
-      <div className="flex flex-col w-[100%] bg-black">
+      <div className="flex flex-col w-full bg-black">
+        {/* 🔎 Search + Org Switcher + User */}
         <header className="h-14 flex items-center px-6 sticky top-0 z-10 bg-black mt-4">
           <div className="flex-1 flex justify-center">
-            <input
-              type="text"
-              placeholder="Search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-1/2 bg-gray-900 border border-gray-700 rounded-md px-3 py-1 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+            <div className="relative w-1/2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-md pl-10 pr-3 py-3 text-base text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-4 ml-4">
@@ -153,22 +146,24 @@ const DocsPage = () => {
                 },
               }}
             />
-            <UserButton
-              appearance={{
-                baseTheme: "dark",
-                elements: {},
-              }}
-            />
+            <UserButton appearance={{ baseTheme: "dark" }} />
           </div>
         </header>
 
+        {/*  Upload + Create Folder */}
         <div className="flex gap-4 px-6 mt-6">
+          {/* Upload Files button (already styled) */}
           <UploadButton />
-          <div className="w-44 max-w-sm border-2 border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-900 hover:border-blue-500 transition cursor-pointer">
+
+          {/* Create Folder button matching UploadButton style */}
+          <div
+            className="w-44 max-w-sm border-2 border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-900 hover:border-blue-500 transition cursor-pointer"
+          >
             <FolderPlus size={28} className="text-gray-400 mb-3" />
-            <p className="text-gray-300 text-sm font-medium">Create folder</p>
+            <p className="text-gray-300 text-sm font-medium">Create Folder</p>
           </div>
         </div>
+
 
         <main className="flex-1 p-6 text-white overflow-y-auto">
           {isLoading ? <Loader /> : renderContent()}

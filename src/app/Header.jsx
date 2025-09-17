@@ -71,3 +71,4 @@ const Header = ({ setQuery }) => {
 };
 
 export default Header;
+

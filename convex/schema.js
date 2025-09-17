@@ -15,26 +15,36 @@ export const fileTypes = v.union(
 );
 
 export default defineSchema({
-  // files table
   files: defineTable({
     name: v.string(),
     type: fileTypes,
     orgId: v.optional(v.string()),
+    folderId: v.optional(v.id("folders")),
     fileId: v.id("_storage"),
+    isDeleted: v.optional(v.boolean()),
+    deletedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    createdByName: v.string(),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_isDeleted", ["isDeleted"])
+    .index("by_orgId_createdAt", ["orgId", "createdAt"])
+    .index("by_folderId", ["folderId"]),
+
+  // folders table
+  folders: defineTable({
+    name: v.string(),
+    orgId: v.optional(v.string()),
+    createdAt: v.number(),
+    createdBy: v.string(), // Clerk user ID
+    createdByName: v.string(), // Snapshot of Clerk display name
     isDeleted: v.optional(v.boolean()),
     deletedAt: v.optional(v.number()),
   })
     .index("by_orgId", ["orgId"])
-    .index("by_isDeleted", ["isDeleted"]),
-  // folders table
-  // folders: defineTable({
-  //   name: v.string(),
-  //   orgId: v.optional(v.string()),
-  //   createdAt: v.number(),
-  //   createdBy: v.optional(v.string()),
-  // })
-  //   .index("by_orgId", ["orgId"])
-  //   .index("by_orgId_name", ["orgId", "name"]),
+    .index("by_orgId_name", ["orgId", "name"])
+    .index("by_isDeleted", ["isDeleted"])
+    .index("by_orgId_createdAt", ["orgId", "createdAt"]),
 
   // users table (Clerk user mapping)
   users: defineTable({

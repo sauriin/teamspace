@@ -1,3 +1,5 @@
+"use client"
+
 import Image from "next/image";
 import { Github, Twitter, Linkedin } from "lucide-react";
 
@@ -106,3 +108,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

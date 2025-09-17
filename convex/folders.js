@@ -3,6 +3,8 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getUser } from "./users";
 
+/* 
+// Create Folder (kept commented as requested)
 export const createFolder = mutation({
   args: {
     name: v.string(),
@@ -27,16 +29,19 @@ export const createFolder = mutation({
       )
       .unique();
 
-    if (existing) return; 
+    if (existing) return;
 
     await ctx.db.insert("folders", {
       name: args.name,
       orgId: args.orgId,
       createdAt: Date.now(),
-      createdBy: identity.subject,
+      createdBy: identity.subject,          // Clerk user ID
+      createdByName: identity.name || "Unknown", // Clerk display name
+      isDeleted: false,
     });
   },
 });
+*/
 
 // Query: Get all folders for an organization
 export const getFolders = query({
@@ -66,7 +71,28 @@ export const getFolders = query({
       );
     }
 
-    return folders;
+    // Always return details
+    return folders.map((f) => ({
+      ...f,
+      createdByName: f.createdByName || "Unknown",
+      createdAt: f.createdAt,
+    }));
+  },
+});
+
+// Query: Get single folder details
+export const getFolderDetails = query({
+  args: { folderId: v.id("folders") },
+  async handler(ctx, { folderId }) {
+    const folder = await ctx.db.get(folderId);
+    if (!folder) throw new Error("Folder not found");
+
+    return {
+      name: folder.name,
+      createdAt: folder.createdAt,
+      createdByName: folder.createdByName || "Unknown",
+      isDeleted: folder.isDeleted || false,
+    };
   },
 });
 
@@ -83,7 +109,6 @@ export const renameFolder = mutation({
     const folder = await ctx.db.get(args.folderId);
     if (!folder) throw new Error("Folder not found");
 
-    
     const existing = await ctx.db
       .query("folders")
       .withIndex("by_orgId_name", (q) =>
@@ -101,7 +126,7 @@ export const renameFolder = mutation({
   },
 });
 
-// Delete Folder (delete all files inside)
+// Delete Folder (and all files inside it)
 export const deleteFolder = mutation({
   args: {
     folderId: v.id("folders"),
