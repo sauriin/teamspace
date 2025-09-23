@@ -39,16 +39,6 @@ export default function FolderView({
     const restoreFolder = useMutation(api.trashBin.restoreFolder);
     const deleteFolderForever = useMutation(api.trashBin.deleteFolder);
 
-    const fetchFileCount = async (folderId) => {
-        try {
-            const files = await api.folders.getFilesInFolder({ folderId });
-            setFileCount(files?.length || 0);
-        } catch {
-            setFileCount(0);
-            toast.error("Failed to fetch file count");
-        }
-    };
-
     if (!folders) return <div className="p-4 text-gray-400">Loading...</div>;
 
     return (
@@ -181,9 +171,6 @@ export default function FolderView({
                             </p>
                             <p>
                                 <strong>Trashed:</strong> {showDetails.isDeleted ? "Yes" : "No"}
-                            </p>
-                            <p>
-                                <strong>Files inside:</strong> {fileCount}
                             </p>
                         </div>
                     )}

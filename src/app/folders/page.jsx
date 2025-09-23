@@ -71,7 +71,7 @@ const FoldersPage = () => {
                         <Button
                             variant="default"
                             onClick={() => setOpenFolderId(null)}
-                            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white ml-4"
+                            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white mr-10"
                         >
                             <ArrowLeft size={20} /> Back to Folders
                         </Button>
