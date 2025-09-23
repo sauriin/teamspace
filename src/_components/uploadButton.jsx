@@ -27,7 +27,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Upload } from "lucide-react";
 
-// ✅ Schema
+// Schema 
 const formSchema = z.object({
   title: z.string().min(4, "Title must be at least 4 characters").max(50),
   file: z

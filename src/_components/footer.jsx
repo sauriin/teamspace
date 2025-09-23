@@ -1,111 +1,55 @@
-"use client"
-
-import Image from "next/image";
 import { Github, Twitter, Linkedin } from "lucide-react";
+import Image from "next/image";
 
-const Footer = () => {
+export default function Footer() {
     return (
-        <footer className="w-full bg-black text-white px-6 sm:px-10 py-10">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10">
-                {/* Logo + About */}
-                <div>
-                    <div className="inline-block mb-3">
-                        <Image
-                            src="/TeamSpace.svg"
-                            alt="TeamSpace Logo"
-                            width={140}
-                            height={45}
-                            priority
-                        />
-                    </div>
-                    <p className="text-sm text-white/70 leading-relaxed">
-                        <strong>TeamSpace</strong> helps teams collaborate, manage tasks,
-                        and stay organized — all in one platform.
+        <footer className="py-16 px-6 bg-background border-t border-border">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div className="space-y-4">
+                    <Image src="/white-Teamspace2.png" width={150} height={150} alt="teamspace_logo" />
+                    <p className="text-muted-foreground leading-relaxed">
+                        Helping teams collaborate, manage tasks, and stay organized — all in one platform.
                     </p>
                 </div>
 
-                {/* Contact Info */}
                 <div>
-                    <h3 className="font-semibold mb-3 text-lg">Contact</h3>
-                    <ul className="text-sm space-y-2">
+                    <h3 className="font-semibold text-lg mb-4">Contact</h3>
+                    <ul className="space-y-2">
                         <li>
-                            <a
-                                href="mailto:saurinparmar2324@gmail.com"
-                                className="hover:underline"
-                                aria-label="Email us"
-                            >
-                                Email
+                            <a href="mailto:saurinparmar2324@gmail.com" className="text-muted-foreground hover:text-primary transition-colors">
+                                Email Support
                             </a>
                         </li>
                     </ul>
                 </div>
 
-                {/* Explore */}
                 <div>
-                    <h3 className="font-semibold mb-3 text-lg">Explore</h3>
-                    <ul className="text-sm space-y-2">
-                        <li>
-                            <a href="#whats-inside" className="hover:underline">
-                                What's Inside
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#features" className="hover:underline">
-                                Features
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#faq" className="hover:underline">
-                                FAQ
-                            </a>
-                        </li>
+                    <h3 className="font-semibold text-lg mb-4">Explore</h3>
+                    <ul className="space-y-2">
+                        <li><a href="#features" className="text-muted-foreground hover:text-primary transition-colors">Features</a></li>
+                        <li><a href="#about" className="text-muted-foreground hover:text-primary transition-colors">About</a></li>
+                        <li><a href="#faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</a></li>
                     </ul>
                 </div>
 
-                {/* Social Links */}
                 <div>
-                    <h3 className="font-semibold mb-3 text-lg">Follow Us</h3>
-                    <div className="flex space-x-4">
-                        <a
-                            href="https://github.com/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="GitHub"
-                            className="hover:text-gray-400 transition"
-                        >
+                    <h3 className="font-semibold text-lg mb-4">Follow Us</h3>
+                    <div className="flex gap-4">
+                        <a href="https://github.com/" target="_blank" rel="noopener noreferrer" className="p-2 bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-all">
                             <Github size={20} />
                         </a>
-                        <a
-                            href="https://twitter.com/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="Twitter"
-                            className="hover:text-gray-400 transition"
-                        >
+                        <a href="https://twitter.com/" target="_blank" rel="noopener noreferrer" className="p-2 bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-all">
                             <Twitter size={20} />
                         </a>
-                        <a
-                            href="https://linkedin.com/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="LinkedIn"
-                            className="hover:text-gray-400 transition"
-                        >
+                        <a href="https://linkedin.com/" target="_blank" rel="noopener noreferrer" className="p-2 bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-all">
                             <Linkedin size={20} />
                         </a>
                     </div>
                 </div>
             </div>
-
-            {/* Divider */}
-            <div className="border-t border-white/10 mt-10 pt-6">
-                <p className="text-xs text-white/60 text-center sm:text-left">
-                    © {new Date().getFullYear()} TeamSpace. All rights reserved.
-                </p>
+            <div className="border-t border-border mt-12 pt-8 text-center">
+                <p className="text-muted-foreground">© {new Date().getFullYear()} TeamSpace. All rights reserved.</p>
             </div>
         </footer>
     );
-};
-
-export default Footer;
-
+}

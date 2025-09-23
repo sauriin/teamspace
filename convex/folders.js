@@ -43,7 +43,7 @@ export const createFolder = mutation({
 });
 */
 
-// Query: Get all folders for an organization
+// Query: Get all folders for an organization (excluding trashed)
 export const getFolders = query({
   args: v.object({
     orgId: v.string(),
@@ -59,11 +59,16 @@ export const getFolders = query({
 
     if (!hasAccess) return [];
 
+    // Fetch all folders for the org
     let folders = await ctx.db
       .query("folders")
       .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
       .collect();
 
+    // 🔹 Exclude trashed folders
+    folders = folders.filter((f) => !f.isDeleted);
+
+    // Apply search query if provided
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       folders = folders.filter((f) =>
@@ -71,7 +76,7 @@ export const getFolders = query({
       );
     }
 
-    // Always return details
+    // Map output
     return folders.map((f) => ({
       ...f,
       createdByName: f.createdByName || "Unknown",
@@ -145,5 +150,24 @@ export const deleteFolder = mutation({
 
     // Delete the folder itself
     await ctx.db.delete(folderId);
+  },
+});
+
+export const getFilesInFolder = query({
+  args: { folderId: v.optional(v.id("folders")) },
+  async handler(ctx, { folderId }) {
+    if (!folderId) return []; // safe guard
+
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    // Fetch all files by folderId
+    const files = await ctx.db
+      .query("files")
+      .withIndex("by_folderId", (q) => q.eq("folderId", folderId))
+      .collect();
+
+    // Only non-deleted files
+    return files.filter((f) => !f.isDeleted);
   },
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   useOrganization,
   useUser,
@@ -13,27 +13,40 @@ import { api } from "../../../convex/_generated/api";
 import { Loader2, FolderPlus, Search } from "lucide-react";
 import { UploadButton } from "@/_components/uploadButton";
 import { FileCard } from "@/_components/fileCard";
-import LandingPage from "@/_components/landingPage";
 import Navbar from "../Navbar";
 import Image from "next/image";
+
+// Debounce hook
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 const DocsPage = () => {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { user, isLoaded: userLoaded } = useUser();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
-  const [query, setQuery] = useState("");
-  const [menuState, setMenuState] = useState({
-    section: "home",
-    secondary: "All files",
-  });
+  const [search, setSearch] = useState("");
+  const [activeView, setActiveView] = useState("all"); // "all" | "starred" | "trash"
 
   const orgId = organization?.id ?? user?.id;
   const isClerkLoaded = orgLoaded && userLoaded && authLoaded;
 
+  const debouncedSearch = useDebounce(search, 400);
+
+  // Always call hooks in the same order
   const allFiles = useQuery(
     api.files.getFiles,
-    isClerkLoaded && isSignedIn && orgId ? { orgId, query } : "skip"
+    isClerkLoaded && isSignedIn && orgId
+      ? { orgId, query: activeView === "all" ? debouncedSearch : "" }
+      : "skip"
   );
 
   const starredFiles = useQuery(
@@ -46,92 +59,94 @@ const DocsPage = () => {
     isClerkLoaded && isSignedIn && orgId ? { orgId } : "skip"
   );
 
-  if (!isClerkLoaded)
+  // Reset search when switching views
+  useEffect(() => setSearch(""), [activeView]);
+
+  if (!isClerkLoaded) {
     return (
       <div className="flex items-center justify-center h-screen text-white">
         Loading...
       </div>
     );
+  }
 
-  if (!isSignedIn) return <LandingPage />;
+  if (!isSignedIn) return <div>Please sign in</div>;
 
-  const isLoading = allFiles === undefined;
-  const isStarredLoading = starredFiles === undefined;
-  const isTrashLoading = trashedFiles === undefined;
+  // Select files based on active view
+  let filesToRender = [];
+  if (activeView === "all") filesToRender = allFiles || [];
+  else if (activeView === "starred") filesToRender = starredFiles || [];
+  else if (activeView === "trash") filesToRender = trashedFiles || [];
 
-  const hasFiles = !isLoading && allFiles?.length > 0;
-  const hasStarred = !isStarredLoading && starredFiles?.length > 0;
-  const hasTrash = !isTrashLoading && trashedFiles?.length > 0;
+  const isLoading =
+    (activeView === "all" && !allFiles) ||
+    (activeView === "starred" && !starredFiles) ||
+    (activeView === "trash" && !trashedFiles);
 
   const renderContent = () => {
-    if (menuState.section === "home") {
-      if (menuState.secondary === "All files") {
-        if (!isLoading && !hasFiles) {
-          return (
-            <EmptyState
-              message={
-                query
-                  ? "No matching files found."
-                  : "Your workspace is empty. Upload your first file to begin."
-              }
-            />
-          );
-        }
-        return <FileGrid files={allFiles} />;
+    if (isLoading) return <Loader />;
+
+    if (!filesToRender || filesToRender.length === 0) {
+      let emptyProps = {
+        message: "Your workspace is empty.",
+        icon: "/empty.svg",
+      };
+
+      if (activeView === "all") {
+        emptyProps.message = debouncedSearch
+          ? "No matching files found."
+          : "Your workspace is empty. Upload your first file to begin.";
+      } else if (activeView === "starred") {
+        emptyProps = {
+          message: "Star your important files and find them here quickly.",
+          icon: "/favourite.svg",
+        };
+      } else if (activeView === "trash") {
+        emptyProps = {
+          message: "Your trash is empty. Keep it that way for peace of mind.",
+          icon: "/trash.svg",
+        };
       }
 
-      if (menuState.secondary === "Starred") {
-        if (isStarredLoading) return <Loader />;
-        if (!hasStarred) {
-          return (
-            <EmptyState
-              message="Star your important files and find them here quickly."
-              icon="/favourite.svg"
-              width="210"
-              height="210"
-              gray
-            />
-          );
-        }
-        return <FileGrid files={starredFiles} />;
-      }
-
-      if (menuState.secondary === "Trash") {
-        if (isTrashLoading) return <Loader />;
-        if (!hasTrash) {
-          return (
-            <EmptyState
-              message="Your trash is empty. Keep it that way for peace of mind."
-              icon="/trash.svg"
-              gray
-            />
-          );
-        }
-        return <FileGrid files={trashedFiles} />;
-      }
+      return <EmptyState {...emptyProps} />;
     }
 
-    return null;
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-8">
+        {filesToRender.map((file) => (
+          <div
+            key={file._id}
+            className="transform transition duration-200 hover:scale-[1.02]"
+          >
+            <FileCard file={file} />
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
     <div className="flex h-screen">
+      {/* Navbar */}
       <Navbar
-        onMenuChange={(section, secondary) =>
-          setMenuState({ section, secondary })
-        }
+        onMenuChange={(section, secondary) => {
+          if (secondary === "All files") setActiveView("all");
+          else if (secondary === "Starred") setActiveView("starred");
+          else if (secondary === "Trash") setActiveView("trash");
+        }}
       />
-      <div className="flex flex-col w-full bg-black">
-        {/* 🔎 Search + Org Switcher + User */}
+
+      <div className="flex flex-col w-full bg-black text-white">
+        {/* Header */}
         <header className="h-14 flex items-center px-6 sticky top-0 z-10 bg-black mt-4">
           <div className="flex-1 flex justify-center">
             <div className="relative w-1/2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search files"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-gray-900 border border-gray-700 rounded-md pl-10 pr-3 py-3 text-base text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -150,57 +165,26 @@ const DocsPage = () => {
           </div>
         </header>
 
-        {/*  Upload + Create Folder */}
+        {/* Upload + Create Folder - always visible even in Trash */}
         <div className="flex gap-4 px-6 mt-6">
-          {/* Upload Files button (already styled) */}
           <UploadButton />
-
-          {/* Create Folder button matching UploadButton style */}
-          <div
-            className="w-44 max-w-sm border-2 border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-900 hover:border-blue-500 transition cursor-pointer"
-          >
+          <div className="w-44 max-w-sm border-2 border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-900 hover:border-blue-500 transition cursor-pointer">
             <FolderPlus size={28} className="text-gray-400 mb-3" />
             <p className="text-gray-300 text-sm font-medium">Create Folder</p>
           </div>
         </div>
 
-
-        <main className="flex-1 p-6 text-white overflow-y-auto">
-          {isLoading ? <Loader /> : renderContent()}
-        </main>
+        {/* Main content */}
+        <main className="flex-1 p-6 text-white overflow-y-auto">{renderContent()}</main>
       </div>
     </div>
   );
 };
 
-const FileGrid = ({ files }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-8">
-    {files?.map((file) => (
-      <div
-        key={file._id}
-        className="transform transition duration-200 hover:scale-[1.02]"
-      >
-        <FileCard file={file} />
-      </div>
-    ))}
-  </div>
-);
-
-const EmptyState = ({
-  message,
-  icon = "/empty.svg",
-  gray = false,
-  width = 450,
-  height = 450,
-}) => (
+const EmptyState = ({ message, icon = "/empty.svg", width = 450, height = 450 }) => (
   <div className="flex flex-col items-center justify-center mt-10 gap-4">
     <Image src={icon} alt="Empty" width={width} height={height} />
-    <p
-      className={`text-lg text-center ${gray ? "text-gray-400" : "text-gray-500"
-        }`}
-    >
-      {message}
-    </p>
+    <p className="text-lg text-center text-gray-400">{message}</p>
   </div>
 );
 
