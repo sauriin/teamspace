@@ -37,7 +37,7 @@ export default function FolderView({
     const renameFolder = useMutation(api.folders.renameFolder);
     const trashFolder = useMutation(api.trashBin.trashFolder);
     const restoreFolder = useMutation(api.trashBin.restoreFolder);
-    const deleteFolderForever = useMutation(api.trashBin.deleteFolder);
+    const deleteFolderForever = useMutation(api.folders.deleteFolder);
 
     if (!folders) return <div className="p-4 text-gray-400">Loading...</div>;
 
