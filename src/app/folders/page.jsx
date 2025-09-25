@@ -9,7 +9,7 @@ import {
     UserButton,
 } from "@clerk/nextjs";
 import Navbar from "../Navbar";
-import { FolderPlus, ArrowLeft } from "lucide-react";
+import { FolderPlus, ArrowLeft, Search, Loader2 } from "lucide-react";
 import { UploadButton } from "@/_components/uploadButton";
 import FolderView from "@/_components/folderView";
 import { FileCard } from "@/_components/fileCard";
@@ -87,16 +87,17 @@ const FoldersPage = () => {
 
         if (isLoading)
             return (
-                <div className="flex items-center justify-center h-[60vh] text-gray-400">
-                    Loading...
+                <div className="flex flex-col gap-8 w-full items-center mt-24">
+                    <Loader2 className="h-32 w-32 animate-spin text-gray-500" />
+                    <div className="text-2xl">Loading...</div>
                 </div>
             );
 
         if (!hasFolders)
             return (
-                <div className="flex flex-col items-center justify-center h-[45vh] text-center mt-25 text-gray-400">
+                <div className="flex flex-col items-center justify-center h-[45vh] text-center mt-17 text-gray-400">
                     <Image
-                        src={view === "trash" ? "/trash.svg" : "/empty.svg"}
+                        src={view === "trash" ? "/trash.svg" : "/uploadFolder.svg"}
                         alt="Empty state"
                         width={450}
                         height={450}
@@ -133,14 +134,18 @@ const FoldersPage = () => {
             <div className="flex flex-col w-full bg-black text-white">
                 <header className="h-14 flex items-center px-6 sticky top-0 z-10 bg-black mt-4">
                     <div className="flex-1 flex justify-center">
-                        <input
-                            type="text"
-                            placeholder="Search folders"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            className="w-1/2 bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
+                        <div className="relative w-1/2">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder="Search your folders"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-md pl-10 pr-3 py-2 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                        </div>
                     </div>
+
                     <div className="flex items-center gap-4 ml-4">
                         <OrganizationSwitcher
                             appearance={{

@@ -58,7 +58,7 @@ const fileTypeIcons = {
     default: File,
 };
 
-export function FileCard({ file }) {
+export function FileCard({ file, variant = "grid" }) {
     const [showDetails, setShowDetails] = useState(false);
     const Icon = fileTypeIcons[file.type] || fileTypeIcons.default;
 
@@ -75,10 +75,7 @@ export function FileCard({ file }) {
     const orgId = organization?.id ?? userId;
 
     // starred files
-    const starredFiles = useQuery(
-        api.starred.getStarred,
-        orgId ? { orgId } : "skip"
-    );
+    const starredFiles = useQuery(api.starred.getStarred, orgId ? { orgId } : "skip");
 
     // mutations
     const addStarred = useMutation(api.starred.addStarred);
@@ -91,13 +88,10 @@ export function FileCard({ file }) {
     const isStarred = !!starredFiles?.some((f) => f._id === file._id);
     const isTrashed = file.isDeleted;
 
-    // toggle star
+    // actions
     const toggleStarred = async () => {
         try {
-            if (!orgId) {
-                toast.error("Organization not identified.");
-                return;
-            }
+            if (!orgId) return toast.error("Organization not identified.");
             if (isStarred) {
                 await removeStarred({ fileId: file._id, orgId });
                 toast.success("Removed from starred");
@@ -110,7 +104,6 @@ export function FileCard({ file }) {
         }
     };
 
-    // move to trash
     const handleMoveToTrash = async () => {
         try {
             await moveToTrash({ fileId: file._id });
@@ -120,7 +113,6 @@ export function FileCard({ file }) {
         }
     };
 
-    // restore file
     const handleRestore = async () => {
         try {
             await restoreFile({ fileId: file._id });
@@ -130,7 +122,6 @@ export function FileCard({ file }) {
         }
     };
 
-    // delete permanently
     const handlePermanentDelete = async () => {
         try {
             await permanentlyDelete({ fileId: file._id });
@@ -140,9 +131,132 @@ export function FileCard({ file }) {
         }
     };
 
+    /* ---------- LIST VARIANT ---------- */
+    if (variant === "list") {
+        return (
+            <>
+                <div className="flex items-center justify-between px-4 py-3 bg-slate-800 rounded-md transition mb-5">
+                    {/* Left: Icon + Name */}
+                    <div className="flex items-center gap-3 min-w-0">
+                        <Icon className="w-5 h-5 text-gray-400 shrink-0" />
+                        <span className="truncate text-sm text-gray-200 font-medium">
+                            {file.name}
+                        </span>
+                    </div>
+
+                    {/* Right: Menu */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {/* Details */}
+                            <DropdownMenuItem
+                                onSelect={(e) => {
+                                    e.preventDefault();
+                                    setShowDetails(true);
+                                }}
+                            >
+                                <Info className="w-4 h-4 mr-2" />
+                                Details
+                            </DropdownMenuItem>
+
+                            {/* Download */}
+                            {!isTrashed && (
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        if (!fileUrl) return toast.error("File URL not available.");
+                                        window.open(fileUrl, "_blank");
+                                    }}
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download
+                                </DropdownMenuItem>
+                            )}
+
+                            {/* Star / Unstar */}
+                            {!isTrashed && (
+                                <DropdownMenuItem onClick={toggleStarred}>
+                                    {isStarred ? (
+                                        <>
+                                            <Star
+                                                className="w-4 h-4 mr-2 text-yellow-500"
+                                                fill="currentColor"
+                                            />
+                                            Unstar
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Star className="w-4 h-4 mr-2" />
+                                            Star
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                            )}
+
+                            {/* Trash Actions */}
+                            {isTrashed ? (
+                                <>
+                                    <DropdownMenuItem onClick={handleRestore}>
+                                        <RotateCcw className="w-4 h-4 mr-2" />
+                                        Restore
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className="text-red-600"
+                                        onClick={handlePermanentDelete}
+                                    >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Delete Permanently
+                                    </DropdownMenuItem>
+                                </>
+                            ) : (
+                                <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={handleMoveToTrash}
+                                >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Move to Trash
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+
+                {/* details dialog */}
+                <Dialog open={showDetails} onOpenChange={setShowDetails}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>File Details</DialogTitle>
+                            <DialogDescription>
+                                Information about the selected file.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2 text-sm">
+                            <p>
+                                <strong>Name:</strong> {file.name}
+                            </p>
+                            <p>
+                                <strong>Type:</strong> {file.type}
+                            </p>
+                            <p>
+                                <strong>Created At:</strong>{" "}
+                                {new Date(file._creationTime).toLocaleString()}
+                            </p>
+                            <p>
+                                <strong>Created By:</strong> {file.createdByName}
+                            </p>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </>
+        );
+    }
+
+    /* ---------- GRID VARIANT ---------- */
     return (
         <>
-            {/* File card */}
             <Card className="w-full max-w-xs p-2">
                 <CardHeader className="relative pb-1 pt-1 px-2 space-y-1">
                     <div className="flex items-center justify-between">
@@ -159,10 +273,9 @@ export function FileCard({ file }) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {/* details */}
                                 <DropdownMenuItem
                                     onSelect={(e) => {
-                                        e.preventDefault(); // prevents dropdown from auto-closing issues
+                                        e.preventDefault();
                                         setShowDetails(true);
                                     }}
                                 >
@@ -170,7 +283,6 @@ export function FileCard({ file }) {
                                     Details
                                 </DropdownMenuItem>
 
-                                {/* trash options */}
                                 {isTrashed ? (
                                     <>
                                         <DropdownMenuItem onClick={handleRestore}>
@@ -227,15 +339,11 @@ export function FileCard({ file }) {
                         <p className="text-xs text-muted-foreground">In Trash</p>
                     ) : (
                         <>
-                            {/* download */}
                             <Button
                                 size="sm"
                                 className="justify-center gap-1 text-sm"
                                 onClick={() => {
-                                    if (!fileUrl) {
-                                        toast.error("File URL not available.");
-                                        return;
-                                    }
+                                    if (!fileUrl) return toast.error("File URL not available.");
                                     window.open(fileUrl, "_blank");
                                 }}
                             >
@@ -243,7 +351,6 @@ export function FileCard({ file }) {
                                 Download
                             </Button>
 
-                            {/* star */}
                             <Button
                                 size="sm"
                                 variant={isStarred ? "default" : "outline"}
@@ -275,14 +382,22 @@ export function FileCard({ file }) {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 text-sm">
-                        <p><strong>Name:</strong> {file.name}</p>
-                        <p><strong>Type:</strong> {file.type}</p>
-                        <p><strong>Created At:</strong> {new Date(file._creationTime).toLocaleString()}</p>
-                        <p><strong>Created By:</strong> {file.createdByName}</p>
+                        <p>
+                            <strong>Name:</strong> {file.name}
+                        </p>
+                        <p>
+                            <strong>Type:</strong> {file.type}
+                        </p>
+                        <p>
+                            <strong>Created At:</strong>{" "}
+                            {new Date(file._creationTime).toLocaleString()}
+                        </p>
+                        <p>
+                            <strong>Created By:</strong> {file.createdByName}
+                        </p>
                     </div>
                 </DialogContent>
             </Dialog>
-
         </>
     );
 }

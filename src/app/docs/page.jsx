@@ -10,11 +10,12 @@ import {
 } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Loader2, FolderPlus, Search } from "lucide-react";
+import { Loader2, FolderPlus, Search, Grid2X2Plus, List } from "lucide-react";
 import { UploadButton } from "@/_components/uploadButton";
 import { FileCard } from "@/_components/fileCard";
 import Navbar from "../Navbar";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 // Debounce hook
 function useDebounce(value, delay) {
@@ -35,6 +36,7 @@ const DocsPage = () => {
 
   const [search, setSearch] = useState("");
   const [activeView, setActiveView] = useState("all"); // "all" | "starred" | "trash"
+  const [layout, setLayout] = useState("grid"); // "grid" | "list"
 
   const orgId = organization?.id ?? user?.id;
   const isClerkLoaded = orgLoaded && userLoaded && authLoaded;
@@ -111,18 +113,30 @@ const DocsPage = () => {
       return <EmptyState {...emptyProps} />;
     }
 
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-8">
-        {filesToRender.map((file) => (
-          <div
-            key={file._id}
-            className="transform transition duration-200 hover:scale-[1.02]"
-          >
-            <FileCard file={file} />
-          </div>
-        ))}
-      </div>
-    );
+    if (layout === "grid") {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-8">
+          {filesToRender.map((file) => (
+            <div
+              key={file._id}
+              className="transform transition duration-200 hover:scale-[1.02]"
+            >
+              <FileCard file={file} variant="grid" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (layout === "list") {
+      return (
+        <div className="flex flex-col divide-y divide-gray-800">
+          {filesToRender.map((file) => (
+            <FileCard key={file._id} file={file} variant="list" />
+          ))}
+        </div>
+      );
+    }
   };
 
   return (
@@ -141,18 +155,31 @@ const DocsPage = () => {
         <header className="h-14 flex items-center px-6 sticky top-0 z-10 bg-black mt-4">
           <div className="flex-1 flex justify-center">
             <div className="relative w-1/2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Search files"
+                placeholder="Search your files"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-md pl-10 pr-3 py-3 text-base text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full bg-gray-900 border border-gray-700 rounded-md pl-10 pr-3 py-2 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
-
           <div className="flex items-center gap-4 ml-4">
+            {/* Toggle Layout */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLayout(layout === "grid" ? "list" : "grid")}
+              title={layout === "grid" ? "Switch to List view" : "Switch to Grid view"}
+            >
+              {layout === "grid" ? (
+                <List className="w-5 h-5" />
+              ) : (
+                <Grid2X2Plus className="w-5 h-5" />
+              )}
+            </Button>
+
             <OrganizationSwitcher
               appearance={{
                 elements: {
@@ -181,12 +208,26 @@ const DocsPage = () => {
   );
 };
 
-const EmptyState = ({ message, icon = "/empty.svg", width = 450, height = 450 }) => (
-  <div className="flex flex-col items-center justify-center mt-10 gap-4">
-    <Image src={icon} alt="Empty" width={width} height={height} />
-    <p className="text-lg text-center text-gray-400">{message}</p>
-  </div>
-);
+const EmptyState = ({ message, icon = "/empty.svg" }) => {
+  return (
+    <div className="flex flex-col items-center justify-center mt-10 gap-4">
+      {/* Different Image tags for different icons */}
+      {icon === "/empty.svg" && (
+        <Image src="/empty.svg" alt="Empty workspace" width={500} height={500} className="mt-17" />
+      )}
+
+      {icon === "/favourite.svg" && (
+        <Image src="/favourite.svg" alt="Favourite files" width={250} height={250} />
+      )}
+
+      {icon === "/trash.svg" && (
+        <Image src="/trash.svg" alt="Trash bin" width={400} height={400} className="mt-17" />
+      )}
+
+      <p className="text-lg text-center text-gray-400">{message}</p>
+    </div>
+  );
+};
 
 const Loader = () => (
   <div className="flex flex-col gap-8 w-full items-center mt-24">
