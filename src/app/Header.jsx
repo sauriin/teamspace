@@ -72,7 +72,7 @@ export default function Header() {
         <div className="flex justify-between items-center">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <Image src="/white-Teamspace2.png" width={150} height={150} alt="teamspace_logo" />
+            <Image src="/white-TeamSpace2.png" width={150} height={150} alt="teamspace_logo" />
           </div>
 
           {/* Desktop Navigation */}
