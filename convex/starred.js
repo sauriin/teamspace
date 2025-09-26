@@ -57,14 +57,18 @@ export const removeStarred = mutation({
 
 // get all starred files (returns file docs)
 export const getStarred = query({
-  args: { orgId: v.string() },
-  async handler(ctx, { orgId }) {
+  args: {
+    orgId: v.string(),
+    query: v.optional(v.string()), // 👈 allow optional search term
+  },
+  async handler(ctx, { orgId, query }) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return []; // no auth -> no data
+    if (!identity) return [];
 
-    const user = await getUser(ctx, identity.tokenIdentifier); // map token to user doc
-    if (!user.orgIds.includes(orgId)) return []; // must belong to org
+    const user = await getUser(ctx, identity.tokenIdentifier);
+    if (!user.orgIds.includes(orgId)) return [];
 
+    // fetch starred file references
     const rows = await ctx.db
       .query("starred")
       .withIndex("by_user_org", (q) =>
@@ -72,9 +76,18 @@ export const getStarred = query({
       )
       .collect();
 
-    if (rows.length === 0) return []; // no starred files
+    if (rows.length === 0) return [];
 
-    const files = await Promise.all(rows.map((r) => ctx.db.get(r.fileId))); // load files
-    return files.filter(Boolean); // filter deleted/missing files
+    // load the actual file docs
+    let files = await Promise.all(rows.map((r) => ctx.db.get(r.fileId)));
+    files = files.filter(Boolean); // remove missing/deleted
+
+    // 🔍 apply search filtering if query is present
+    if (query && query.trim() !== "") {
+      const qLower = query.toLowerCase();
+      files = files.filter((file) => file.name.toLowerCase().includes(qLower));
+    }
+
+    return files;
   },
 });

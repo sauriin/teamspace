@@ -58,23 +58,34 @@ export const restoreFile = mutation({
 
 // Get all trashed files
 export const getTrashedFiles = query({
-  args: { orgId: v.string() },
-  async handler(ctx, args) {
+  args: {
+    orgId: v.string(),
+    query: v.optional(v.string()), // 👈 allow optional search string
+  },
+  async handler(ctx, { orgId, query }) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
     const hasAccess = await hasAccessToOrg(
       ctx,
       identity.tokenIdentifier,
-      args.orgId
+      orgId
     );
     if (!hasAccess) return [];
 
-    return await ctx.db
+    let files = await ctx.db
       .query("files")
       .withIndex("by_isDeleted", (q) => q.eq("isDeleted", true))
-      .filter((q) => q.eq(q.field("orgId"), args.orgId))
+      .filter((q) => q.eq(q.field("orgId"), orgId))
       .collect();
+
+    // 🔍 Apply search filtering if query exists
+    if (query && query.trim() !== "") {
+      const qLower = query.toLowerCase();
+      files = files.filter((file) => file.name.toLowerCase().includes(qLower));
+    }
+
+    return files;
   },
 });
 
@@ -125,8 +136,8 @@ export const trashFolder = mutation({
 
 //Get trashed Folder
 export const getTrashedFolders = query({
-  args: { orgId: v.string() },
-  async handler(ctx, { orgId }) {
+  args: { orgId: v.string(), searchQuery: v.optional(v.string()) },
+  async handler(ctx, { orgId, searchQuery }) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
@@ -140,10 +151,18 @@ export const getTrashedFolders = query({
     const trashed = await ctx.db
       .query("folders")
       .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
-      .filter((q) => q.eq(q.field("isDeleted"), true)) // ✅ Correct Convex filter
+      .filter((q) => q.eq(q.field("isDeleted"), true))
       .collect();
 
-    return trashed.map((f) => ({
+    // 🔍 Apply search if searchQuery is provided
+    const filtered =
+      searchQuery && searchQuery.trim()
+        ? trashed.filter((f) =>
+            f.name.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        : trashed;
+
+    return filtered.map((f) => ({
       _id: f._id,
       name: f.name,
       orgId: f.orgId,

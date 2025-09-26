@@ -34,24 +34,28 @@ const FoldersPage = () => {
     useEffect(() => setQuery(""), [view]);
 
     const allFolders = useQuery(api.folders.getFolders, { orgId, searchQuery: query });
-    const trashedFolders = useQuery(api.trashBin.getTrashedFolders, { orgId });
 
-    // Files inside selected folder
+    const trashedFolders = useQuery(
+        api.trashBin.getTrashedFolders,
+        { orgId, searchQuery: query }
+    );
+
+
     const folderFiles = useQuery(
         api.folders.getFilesInFolder,
         openFolderId ? { folderId: openFolderId } : "skip"
     );
 
-    if (!isClerkLoaded)
+    if (!isClerkLoaded) {
         return (
             <div className="flex items-center justify-center h-screen text-white">
                 Loading...
             </div>
         );
+    }
 
     const displayFolders = view === "all" ? allFolders ?? [] : trashedFolders ?? [];
     const isLoading = view === "all" ? !allFolders : !trashedFolders;
-    const hasFolders = displayFolders.length > 0;
 
     const handleFolderClick = (folder) => {
         setOpenFolderId(folder._id);
@@ -59,10 +63,12 @@ const FoldersPage = () => {
     };
 
     const renderContent = () => {
-        // If a folder is open, show its files
+        // Open folder view
         if (openFolderId) {
-            if (!folderFiles) return <div className="text-gray-400">Loading files...</div>;
-            if (folderFiles.length === 0) return <div className="text-gray-400">No files inside this folder.</div>;
+            if (!folderFiles)
+                return <Loader message="Loading files inside folder..." />;
+            if (folderFiles.length === 0)
+                return <EmptyState message="No files inside this folder." icon="/empty.svg" />;
 
             return (
                 <div>
@@ -71,7 +77,7 @@ const FoldersPage = () => {
                         <Button
                             variant="default"
                             onClick={() => setOpenFolderId(null)}
-                            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white mr-10"
+                            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white"
                         >
                             <ArrowLeft size={20} /> Back to Folders
                         </Button>
@@ -85,38 +91,34 @@ const FoldersPage = () => {
             );
         }
 
-        if (isLoading)
-            return (
-                <div className="flex flex-col gap-8 w-full items-center mt-24">
-                    <Loader2 className="h-32 w-32 animate-spin text-gray-500" />
-                    <div className="text-2xl">Loading...</div>
-                </div>
-            );
+        // Loading state
+        if (isLoading) return <Loader message="Loading folders..." />;
 
-        if (!hasFolders)
-            return (
-                <div className="flex flex-col items-center justify-center h-[45vh] text-center mt-17 text-gray-400">
-                    <Image
-                        src={view === "trash" ? "/trash.svg" : "/uploadFolder.svg"}
-                        alt="Empty state"
-                        width={450}
-                        height={450}
-                        className="mb-6 opacity-80"
-                    />
-                    <p className="text-xl text-gray-500">
-                        {view === "trash"
-                            ? "No folders in Trash."
-                            : "Create a folder to start organizing your files."}
-                    </p>
-                </div>
-            );
+        // No folders found
+        if (!displayFolders.length) {
+            const hasSearch = query.trim().length > 0;
 
+            let imageSrc = "/uploadFolder.svg";
+            let message = "Create a folder to start organizing your files.";
+
+            if (hasSearch) {
+                imageSrc = "/notFoundFolder.svg";
+                message = "No matching folders found.";
+            } else if (view === "trash") {
+                imageSrc = "/trash.svg";
+                message = "No folders in Trash.";
+            }
+
+            return <EmptyState message={message} icon={imageSrc} />;
+        }
+
+        // Default folder view
         return (
             <FolderView
                 orgId={orgId}
                 folders={displayFolders}
                 isTrashView={view === "trash"}
-                onFolderClick={handleFolderClick} // Pass click handler
+                onFolderClick={handleFolderClick}
             />
         );
     };
@@ -128,10 +130,12 @@ const FoldersPage = () => {
                 onMenuChange={(section, secondary, folderId) => {
                     if (secondary === "Trash") setView("trash");
                     else if (section === "folders") setView("all");
-                    if (folderId) setOpenFolderId(folderId); // Click from navbar
+                    if (folderId) setOpenFolderId(folderId);
                 }}
             />
+
             <div className="flex flex-col w-full bg-black text-white">
+                {/* Header */}
                 <header className="h-14 flex items-center px-6 sticky top-0 z-10 bg-black mt-4">
                     <div className="flex-1 flex justify-center">
                         <div className="relative w-1/2">
@@ -159,6 +163,7 @@ const FoldersPage = () => {
                     </div>
                 </header>
 
+                {/* Upload + Create Folder */}
                 <div className="flex gap-4 px-6 mt-6">
                     <UploadButton />
                     <div className="w-44 max-w-sm border-2 border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-900 hover:border-blue-500 transition cursor-pointer">
@@ -169,12 +174,35 @@ const FoldersPage = () => {
                     </div>
                 </div>
 
-                <main className="flex-1 p-6 text-white overflow-y-auto">
-                    {renderContent()}
-                </main>
+                {/* Main content */}
+                <main className="flex-1 p-6 text-white overflow-y-auto">{renderContent()}</main>
             </div>
         </div>
     );
 };
+
+// Loader component
+const Loader = ({ message }) => (
+    <div className="flex flex-col gap-8 w-full items-center mt-24 text-gray-500">
+        <Loader2 className="h-32 w-32 animate-spin" />
+        <div className="text-2xl">{message}</div>
+    </div>
+);
+
+// Empty state component for folders
+const EmptyState = ({ message, icon = "/uploadFolder.svg" }) => (
+    <div className="flex flex-col items-center justify-center h-[45vh] text-center mt-10 gap-4 text-gray-400">
+        {icon === "/uploadFolder.svg" && (
+            <Image src="/uploadFolder.svg" alt="Empty folders" width={450} height={450} className="mb-6 opacity-80" />
+        )}
+        {icon === "/trash.svg" && (
+            <Image src="/trash.svg" alt="Empty trash" width={450} height={450} className="mb-6 opacity-80" />
+        )}
+        {icon === "/notFoundFolder.svg" && (
+            <Image src="/notFoundFolder.svg" alt="No folders found" width={450} height={450} className="mb-6 opacity-80" />
+        )}
+        <p className="text-xl text-gray-500">{message}</p>
+    </div>
+);
 
 export default FoldersPage;

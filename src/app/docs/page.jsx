@@ -53,12 +53,17 @@ const DocsPage = () => {
 
   const starredFiles = useQuery(
     api.starred.getStarred,
-    isClerkLoaded && isSignedIn && orgId ? { orgId } : "skip"
+    isClerkLoaded && isSignedIn && orgId
+      ? { orgId, query: debouncedSearch }
+      : "skip"
   );
+
 
   const trashedFiles = useQuery(
     api.trashBin.getTrashedFiles,
-    isClerkLoaded && isSignedIn && orgId ? { orgId } : "skip"
+    isClerkLoaded && isSignedIn && orgId
+      ? { orgId, query: debouncedSearch }
+      : "skip"
   );
 
   // Reset search when switching views
@@ -89,15 +94,19 @@ const DocsPage = () => {
     if (isLoading) return <Loader />;
 
     if (!filesToRender || filesToRender.length === 0) {
-      let emptyProps = {
-        message: "Your workspace is empty.",
-        icon: "/empty.svg",
-      };
+      let emptyProps = { message: "", icon: "" };
 
-      if (activeView === "all") {
-        emptyProps.message = debouncedSearch
-          ? "No matching files found."
-          : "Your workspace is empty. Upload your first file to begin.";
+      if (debouncedSearch) {
+        // 🔍 Show "not found" for any section if searching
+        emptyProps = {
+          message: "No matching files found.",
+          icon: "/notFoundFile.svg",
+        };
+      } else if (activeView === "all") {
+        emptyProps = {
+          message: "Your workspace is empty. Upload your first file to begin.",
+          icon: "/empty.svg",
+        };
       } else if (activeView === "starred") {
         emptyProps = {
           message: "Star your important files and find them here quickly.",
@@ -222,6 +231,10 @@ const EmptyState = ({ message, icon = "/empty.svg" }) => {
 
       {icon === "/trash.svg" && (
         <Image src="/trash.svg" alt="Trash bin" width={400} height={400} className="mt-17" />
+      )}
+
+      {icon === "/notFoundFile.svg" && (
+        <Image src="/notFoundFile.svg" alt="not-found" width={400} height={400} className="mt-17" />
       )}
 
       <p className="text-lg text-center text-gray-400">{message}</p>
