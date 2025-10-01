@@ -1,4 +1,3 @@
-// src/app/whiteBoard/page.jsx
 "use client";
 
 import React from "react";

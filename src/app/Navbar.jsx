@@ -30,10 +30,21 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
         getActiveFromPath(pathname)
     );
     const [secondaryActive, setSecondaryActive] = useState("All files");
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     useEffect(() => {
         setActiveSection(getActiveFromPath(pathname));
     }, [pathname]);
+
+    // Collapse Navbar on small screens
+    useEffect(() => {
+        const handleResize = () => {
+            setIsCollapsed(window.innerWidth < 768);
+        };
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     const secondaryMenus = {
         home: [
@@ -52,7 +63,6 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
         ],
     };
 
-    // If section is "folders", map actual folders into menu items
     const currentMenu =
         activeSection === "folders"
             ? folders.map((f) => ({
@@ -74,6 +84,7 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
                     ? "bg-gradient-to-r from-[#1a0e2b] to-[#2c1b49] text-white"
                     : "text-gray-300 hover:bg-gradient-to-r hover:from-[#1a0e2b] hover:to-[#2c1b49] hover:text-white"
                 }`}
+            title={section}
         >
             <Icon size={22} />
         </button>
@@ -82,8 +93,11 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
     return (
         <div className="flex h-full">
             {/* Primary Sidebar */}
-            <aside className="w-[80px] bg-black text-white flex flex-col py-6 border-r border-gray-700">
-                <div className="mb-12 mt-2 flex justify-center">
+            <aside
+                className={`flex flex-col py-6 border-r border-gray-700 transition-all duration-300 bg-black text-white
+    ${isCollapsed ? "w-20" : "w-24 md:w-24 lg:w-28"}`} // primary sidebar width adjusted
+            >
+                <div className={`mb-12 mt-2 flex justify-center ${isCollapsed ? "" : "px-4"}`}>
                     <Link href="/">
                         <Image
                             src="/logo.png"
@@ -99,28 +113,25 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
                 <nav className="flex flex-col gap-4 items-center">
                     <NavButton section="home" icon={Home} path="/docs" />
                     <NavButton section="folders" icon={Folder} path="/folders" />
-                    <NavButton
-                        section="whiteBoard"
-                        icon={SquarePen}
-                        path="/whiteBoard"
-                    />
+                    <NavButton section="whiteBoard" icon={SquarePen} path="/whiteBoard" />
                     <NavButton section="contact" icon={Users} path="/contact" />
                 </nav>
             </aside>
 
             {/* Secondary Sidebar */}
             {(activeSection === "folders" || currentMenu.length > 0) && (
-                <aside className="w-[200px] bg-black text-white border-r border-gray-700 flex flex-col py-6 px-4">
+                <aside
+                    className={`flex flex-col py-6 border-r border-gray-700 bg-black text-white transition-all duration-300
+          ${isCollapsed ? "w-0 overflow-hidden" : "w-48 px-4"}`}
+                >
                     <h2 className="text-lg font-semibold ml-2 mb-6">
                         {activeSection === "folders"
                             ? "Folders"
                             : activeSection === "whiteBoard"
                                 ? "Smart Board"
-                                : activeSection.charAt(0).toUpperCase() +
-                                activeSection.slice(1)}
+                                : activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
                     </h2>
 
-                    {/* Top Menu */}
                     <div className="flex-1">
                         {activeSection === "folders" && folders.length === 0 ? (
                             <div className="flex flex-1 items-center justify-center text-gray-400 italic">
@@ -137,20 +148,21 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
                                             onMenuChange(activeSection, item.label);
                                         }}
                                         className={`flex items-center gap-3 py-2 px-2 rounded-md transition
-                ${secondaryActive === item.label
+                      ${secondaryActive === item.label
                                                 ? "bg-gradient-to-r from-[#1a0e2b] to-[#2c1b49] text-white"
                                                 : "hover:bg-gray-800 text-gray-300"
                                             }`}
                                     >
                                         <item.icon size={18} />
-                                        <span>{item.label}</span>
+                                        <span className={`${isCollapsed ? "hidden" : "inline"}`}>
+                                            {item.label}
+                                        </span>
                                     </Link>
                                 ))}
                             </nav>
                         )}
                     </div>
 
-                    {/* Trash Bin at bottom (always visible) */}
                     <div className="mt-auto">
                         <button
                             onClick={() => {
@@ -158,13 +170,13 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
                                 onMenuChange(activeSection, "Trash");
                             }}
                             className={`flex w-full items-center gap-3 py-2 px-2 rounded-md transition
-          ${secondaryActive === "Trash"
+                ${secondaryActive === "Trash"
                                     ? "bg-gradient-to-r from-[#1a0e2b] to-[#2c1b49] text-white"
                                     : "hover:bg-gray-800 text-gray-300"
                                 }`}
                         >
                             <Trash2 size={18} />
-                            <span>Trash Bin</span>
+                            <span className={`${isCollapsed ? "hidden" : "inline"}`}>Trash Bin</span>
                         </button>
                     </div>
                 </aside>
