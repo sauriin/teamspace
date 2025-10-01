@@ -21,7 +21,7 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
     const getActiveFromPath = (path) => {
         if (path.startsWith("/docs")) return "home";
         if (path.startsWith("/folders")) return "folders";
-        if (path.startsWith("/smartboard")) return "smartBoard";
+        if (path.startsWith("/whiteBoard")) return "whiteBoard";
         if (path.startsWith("/contact")) return "contact";
         return "home";
     };
@@ -40,7 +40,7 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
             { label: "All files", icon: File },
             { label: "Starred", icon: Star },
         ],
-        smartBoard: [
+        whiteBoard: [
             { label: "New Doc", icon: SquarePen },
             { label: "Drafts", icon: Folder },
             { label: "Templates", icon: Star },
@@ -100,9 +100,9 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
                     <NavButton section="home" icon={Home} path="/docs" />
                     <NavButton section="folders" icon={Folder} path="/folders" />
                     <NavButton
-                        section="smartBoard"
+                        section="whiteBoard"
                         icon={SquarePen}
-                        path="/smartboard"
+                        path="/whiteBoard"
                     />
                     <NavButton section="contact" icon={Users} path="/contact" />
                 </nav>
@@ -114,7 +114,7 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
                     <h2 className="text-lg font-semibold ml-2 mb-6">
                         {activeSection === "folders"
                             ? "Folders"
-                            : activeSection === "smartBoard"
+                            : activeSection === "whiteBoard"
                                 ? "Smart Board"
                                 : activeSection.charAt(0).toUpperCase() +
                                 activeSection.slice(1)}

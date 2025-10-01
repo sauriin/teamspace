@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// File Types
 export const fileTypes = v.union(
   v.literal("pdf"),
   v.literal("doc"),
@@ -15,6 +16,7 @@ export const fileTypes = v.union(
 );
 
 export default defineSchema({
+  // Files Table
   files: defineTable({
     name: v.string(),
     type: fileTypes,
@@ -31,13 +33,13 @@ export default defineSchema({
     .index("by_orgId_createdAt", ["orgId", "createdAt"])
     .index("by_folderId", ["folderId"]),
 
-  // folders table
+  // Folders Table
   folders: defineTable({
     name: v.string(),
     orgId: v.optional(v.string()),
     createdAt: v.number(),
-    createdBy: v.string(), // Clerk user ID
-    createdByName: v.string(), // Snapshot of Clerk display name
+    createdBy: v.string(),
+    createdByName: v.string(),
     isDeleted: v.optional(v.boolean()),
     deletedAt: v.optional(v.number()),
   })
@@ -46,19 +48,30 @@ export default defineSchema({
     .index("by_isDeleted", ["isDeleted"])
     .index("by_orgId_createdAt", ["orgId", "createdAt"]),
 
-  // users table (Clerk user mapping)
+  // Users Table
   users: defineTable({
     tokenIdentifier: v.string(),
     orgIds: v.array(v.string()),
   }).index("by_tokenIdentifier", ["tokenIdentifier"]),
 
-  // starred table (single row per user+org+file)
+  // Starred Table
   starred: defineTable({
     userId: v.id("users"),
     orgId: v.string(),
     fileId: v.id("files"),
-    createdAt: v.float64(),
+    createdAt: v.number(),
   })
     .index("by_user_org", ["userId", "orgId"])
     .index("by_user_org_file", ["userId", "orgId", "fileId"]),
+
+  // Whiteboard Strokes Table
+  strokes: defineTable({
+    boardId: v.string(),
+    userId: v.string(),
+    tool: v.string(), // "pen", "eraser", "highlighter", "line", etc.
+    color: v.string(),
+    width: v.number(),
+    points: v.array(v.object({ x: v.number(), y: v.number() })),
+    createdAt: v.number(), // timestamp
+  }).index("by_board", ["boardId"]),
 });

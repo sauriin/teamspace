@@ -8,15 +8,22 @@ import {
     OrganizationSwitcher,
     UserButton,
 } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import {
+    FolderPlus,
+    ArrowLeft,
+    Search,
+    Loader2,
+    Grid2X2,
+    List,
+} from "lucide-react";
 import Navbar from "../Navbar";
-import { FolderPlus, ArrowLeft, Search, Loader2 } from "lucide-react";
 import { UploadButton } from "@/_components/uploadButton";
 import FolderView from "@/_components/folderView";
 import { FileCard } from "@/_components/fileCard";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 const FoldersPage = () => {
     const { organization, isLoaded: orgLoaded } = useOrganization();
@@ -27,19 +34,24 @@ const FoldersPage = () => {
     const [view, setView] = useState("all"); // "all" | "trash"
     const [openFolderId, setOpenFolderId] = useState(null);
     const [selectedFolderName, setSelectedFolderName] = useState("");
+    const [layout, setLayout] = useState("grid"); // "grid" | "list"
 
     const orgId = organization?.id ?? user?.id ?? "";
     const isClerkLoaded = orgLoaded && userLoaded && authLoaded;
 
+    // reset search when view changes
     useEffect(() => setQuery(""), [view]);
 
-    const allFolders = useQuery(api.folders.getFolders, { orgId, searchQuery: query });
+    // queries
+    const allFolders = useQuery(api.folders.getFolders, {
+        orgId,
+        searchQuery: query,
+    });
 
-    const trashedFolders = useQuery(
-        api.trashBin.getTrashedFolders,
-        { orgId, searchQuery: query }
-    );
-
+    const trashedFolders = useQuery(api.trashBin.getTrashedFolders, {
+        orgId,
+        searchQuery: query,
+    });
 
     const folderFiles = useQuery(
         api.folders.getFilesInFolder,
@@ -63,10 +75,9 @@ const FoldersPage = () => {
     };
 
     const renderContent = () => {
-        // Open folder view
+        // when a folder is opened
         if (openFolderId) {
-            if (!folderFiles)
-                return <Loader message="Loading files inside folder..." />;
+            if (!folderFiles) return <Loader message="Loading files inside folder..." />;
             if (folderFiles.length === 0)
                 return <EmptyState message="No files inside this folder." icon="/empty.svg" />;
 
@@ -82,22 +93,29 @@ const FoldersPage = () => {
                             <ArrowLeft size={20} /> Back to Folders
                         </Button>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-                        {folderFiles.map((file) => (
-                            <FileCard key={file._id} file={file} />
-                        ))}
-                    </div>
+                    {layout === "grid" ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+                            {folderFiles.map((file) => (
+                                <FileCard key={file._id} file={file} variant="grid" />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col divide-y divide-gray-800">
+                            {folderFiles.map((file) => (
+                                <FileCard key={file._id} file={file} variant="list" />
+                            ))}
+                        </div>
+                    )}
                 </div>
             );
         }
 
-        // Loading state
+        // loading state
         if (isLoading) return <Loader message="Loading folders..." />;
 
-        // No folders found
+        // no folders
         if (!displayFolders.length) {
             const hasSearch = query.trim().length > 0;
-
             let imageSrc = "/uploadFolder.svg";
             let message = "Create a folder to start organizing your files.";
 
@@ -112,13 +130,13 @@ const FoldersPage = () => {
             return <EmptyState message={message} icon={imageSrc} />;
         }
 
-        // Default folder view
+        // default folder view
         return (
             <FolderView
-                orgId={orgId}
                 folders={displayFolders}
                 isTrashView={view === "trash"}
                 onFolderClick={handleFolderClick}
+                layout={layout}
             />
         );
     };
@@ -151,6 +169,16 @@ const FoldersPage = () => {
                     </div>
 
                     <div className="flex items-center gap-4 ml-4">
+                        {/* layout toggle */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setLayout(layout === "grid" ? "list" : "grid")}
+                            title={layout === "grid" ? "Switch to List view" : "Switch to Grid view"}
+                        >
+                            {layout === "grid" ? <List size={20} /> : <Grid2X2 size={20} />}
+                        </Button>
+
                         <OrganizationSwitcher
                             appearance={{
                                 elements: {
@@ -181,7 +209,7 @@ const FoldersPage = () => {
     );
 };
 
-// Loader component
+// Loader
 const Loader = ({ message }) => (
     <div className="flex flex-col gap-8 w-full items-center mt-24 text-gray-500">
         <Loader2 className="h-32 w-32 animate-spin" />
@@ -189,18 +217,10 @@ const Loader = ({ message }) => (
     </div>
 );
 
-// Empty state component for folders
+// Empty state
 const EmptyState = ({ message, icon = "/uploadFolder.svg" }) => (
     <div className="flex flex-col items-center justify-center h-[45vh] text-center mt-10 gap-4 text-gray-400">
-        {icon === "/uploadFolder.svg" && (
-            <Image src="/uploadFolder.svg" alt="Empty folders" width={450} height={450} className="mb-6 opacity-80" />
-        )}
-        {icon === "/trash.svg" && (
-            <Image src="/trash.svg" alt="Empty trash" width={450} height={450} className="mb-6 opacity-80" />
-        )}
-        {icon === "/notFoundFolder.svg" && (
-            <Image src="/notFoundFolder.svg" alt="No folders found" width={450} height={450} className="mb-6 opacity-80" />
-        )}
+        <Image src={icon} alt="Empty" width={450} height={450} className="mb-6 opacity-80" />
         <p className="text-xl text-gray-500">{message}</p>
     </div>
 );
