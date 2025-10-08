@@ -67,11 +67,12 @@ export default function FolderView({
                                 trashFolder={trashFolder}
                                 restoreFolder={restoreFolder}
                                 deleteFolderForever={deleteFolderForever}
+                                layout="grid"
                             />
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-col divide-y divide-gray-800">
+                    <div className="flex flex-col divide-y divide-gray-800 gap-y-4">
                         {folders.map((folder) => (
                             <FolderCard
                                 key={folder._id}
@@ -174,12 +175,14 @@ function FolderCard({
         >
             <div
                 className={`flex ${layout === "list"
-                        ? "flex-row items-center justify-between w-full"
-                        : "flex-col items-center justify-center h-full text-center space-y-2"
+                    ? "flex-row items-center justify-start w-full gap-4"
+                    : "flex-col items-center justify-center h-full text-center space-y-2"
                     }`}
             >
-                <Folder className="w-30 h-30 text-blue-400" />
-                <span className="text-sm font-medium truncate ml-2">{folder.name}</span>
+                <Folder
+                    className={`text-blue-400 ${layout === "grid" ? "w-35 h-35" : "w-5 h-5 text-xl"}`}
+                />
+                <span className="text-sm font-medium truncate">{folder.name}</span>
             </div>
 
             {/* Dropdown */}
