@@ -67,11 +67,14 @@ export default defineSchema({
   // Whiteboard Strokes Table
   strokes: defineTable({
     boardId: v.string(),
+    orgId: v.string(), 
     userId: v.string(),
     tool: v.string(), // "pen", "eraser", "highlighter", "line", etc.
     color: v.string(),
     width: v.number(),
     points: v.array(v.object({ x: v.number(), y: v.number() })),
     createdAt: v.number(), // timestamp
-  }).index("by_board", ["boardId"]),
+  })
+    .index("by_board", ["boardId"])
+    .index("by_board_org", ["boardId", "orgId"]), 
 });

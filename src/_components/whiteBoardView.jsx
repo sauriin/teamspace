@@ -17,6 +17,7 @@ export default function WhiteboardView({ boardId = "default" }) {
   const isClerkLoaded = userLoaded && orgLoaded && authLoaded;
   const orgId = organization?.id ?? user?.id;
 
+
   // --- Convex ---
   const getStrokesQuery = useQuery(
     api.whiteBoard.getStrokes,
@@ -26,53 +27,56 @@ export default function WhiteboardView({ boardId = "default" }) {
   );
   const addStrokeMutation = useMutation(api.whiteBoard.addStroke);
   const clearBoardMutation = useMutation(api.whiteBoard.clearBoard);
+  const removeLastStroke = useMutation(api.whiteBoard.removeLastStroke);
 
-  // --- Canvas State ---
+  // --- State ---
   const [strokes, setStrokes] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
+  const [textBoxes, setTextBoxes] = useState([]);
   const [currentStroke, setCurrentStroke] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
   const [tool, setTool] = useState("pen");
   const [color, setColor] = useState("#000000");
   const [width, setWidth] = useState(3);
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState(null);
-
-  // --- Text Tool State ---
-  const [textBoxes, setTextBoxes] = useState([]); // all text boxes on canvas
-  const [activeText, setActiveText] = useState(null); // current editing box
-
-  // --- Toolbar Responsive State ---
+  const [activeText, setActiveText] = useState(null);
   const [toolbarLeft, setToolbarLeft] = useState(300);
+  const [textSize, setTextSize] = useState(20);
 
+  // --- Load strokes from Convex ---
+  useEffect(() => {
+    if (getStrokesQuery) setStrokes(getStrokesQuery);
+  }, [getStrokesQuery]);
+
+  // --- Responsive toolbar ---
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) setToolbarLeft(100);       // small screens
-      else if (window.innerWidth < 1024) setToolbarLeft(300); // medium screens
-      else setToolbarLeft(330);                              // big screens
+      if (window.innerWidth < 768) setToolbarLeft(100);
+      else if (window.innerWidth < 1024) setToolbarLeft(150);
+      else setToolbarLeft(140);
     };
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-
-  // Load strokes from Convex
+  // --- Canvas resizing ---
   useEffect(() => {
-    if (getStrokesQuery) setStrokes(getStrokesQuery);
-  }, [getStrokesQuery]);
+    const handleCanvasResize = () => {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      drawAll();
+    };
+    handleCanvasResize();
+    window.addEventListener("resize", handleCanvasResize);
+    return () => window.removeEventListener("resize", handleCanvasResize);
+  }, [strokes, currentStroke, textBoxes]);
 
-  // Resize canvas and redraw
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !containerRef.current) return;
-    canvas.width = containerRef.current.clientWidth;
-    canvas.height = containerRef.current.clientHeight;
-    drawAll();
-  }, []);
-
-  useEffect(() => drawAll(), [strokes, currentStroke, textBoxes]);
-
-  // Keyboard shortcuts
+  // --- Keyboard shortcuts ---
   useEffect(() => {
     const handleKey = (e) => {
       if (e.ctrlKey && e.key === "z") undo();
@@ -84,6 +88,7 @@ export default function WhiteboardView({ boardId = "default" }) {
           case "r": setTool("rectangle"); break;
           case "l": setTool("ellipse"); break;
           case "a": setTool("arrow"); break;
+          case "s": setTool("line"); break; // line tool shortcut
           case "t": setTool("text"); break;
         }
       }
@@ -92,7 +97,7 @@ export default function WhiteboardView({ boardId = "default" }) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [strokes, redoStack]);
 
-  // --- Drawing Functions ---
+  // --- Drawing functions ---
   const drawAll = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -103,25 +108,31 @@ export default function WhiteboardView({ boardId = "default" }) {
 
     if (isDrawing && startPos && currentStroke.length) {
       const pos = currentStroke[0];
-      const previewStroke = { points: [startPos, pos], color, width, tool };
-      drawStroke(ctx, previewStroke, true);
+      drawStroke(ctx, { points: [startPos, pos], color, width, tool }, true);
     }
   };
 
   const drawStroke = (ctx, s, preview = false) => {
-    if (s.tool === "pen" || s.tool === "eraser") {
-      drawFree(ctx, s.points, s.tool === "eraser" ? "#ffffff" : s.color, s.width);
-    } else if (s.tool === "rectangle") {
-      drawRect(ctx, s.points[0], s.points[1], s.color, s.width, preview);
-    } else if (s.tool === "ellipse") {
-      drawEllipse(ctx, s.points[0], s.points[1], s.color, s.width, preview);
-    } else if (s.tool === "arrow") {
-      drawArrow(ctx, s.points[0], s.points[1], s.color, s.width, preview);
+    switch (s.tool) {
+      case "pen":
+      case "eraser":
+        drawFree(ctx, s.points, s.tool === "eraser" ? "#ffffff" : s.color, s.width);
+        break;
+      case "rectangle":
+        drawRect(ctx, s.points[0], s.points[1], s.color, s.width, preview);
+        break;
+      case "ellipse":
+        drawEllipse(ctx, s.points[0], s.points[1], s.color, s.width, preview);
+        break;
+      case "arrow":
+      case "line":
+        drawLineOrArrow(ctx, s.points[0], s.points[1], s.color, s.width, s.tool === "arrow", preview);
+        break;
     }
   };
 
   const drawFree = (ctx, points, strokeColor, strokeWidth) => {
-    if (!points || !points.length) return;
+    if (!points?.length) return;
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = strokeWidth;
     ctx.lineCap = "round";
@@ -132,48 +143,61 @@ export default function WhiteboardView({ boardId = "default" }) {
     ctx.stroke();
   };
 
-  const drawRect = (ctx, start, end, strokeColor, strokeWidth, preview = false) => {
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = strokeWidth;
+  const drawRect = (ctx, start, end, color, width, preview) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
     ctx.setLineDash(preview ? [6, 4] : []);
-    ctx.beginPath();
-    ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
-    ctx.stroke();
+    ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
     ctx.setLineDash([]);
   };
 
-  const drawEllipse = (ctx, start, end, strokeColor, strokeWidth, preview = false) => {
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = strokeWidth;
+  const drawEllipse = (ctx, start, end, color, width, preview) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
     ctx.setLineDash(preview ? [6, 4] : []);
-    ctx.beginPath();
     const centerX = (start.x + end.x) / 2;
     const centerY = (start.y + end.y) / 2;
     const radiusX = Math.abs(end.x - start.x) / 2;
     const radiusY = Math.abs(end.y - start.y) / 2;
+    ctx.beginPath();
     ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.setLineDash([]);
   };
 
-  const drawArrow = (ctx, start, end, strokeColor, strokeWidth, preview = false) => {
-    ctx.strokeStyle = strokeColor;
-    ctx.fillStyle = strokeColor;
-    ctx.lineWidth = strokeWidth;
+  const drawLineOrArrow = (ctx, start, end, color, width, isArrow, preview) => {
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = width;
     ctx.setLineDash(preview ? [6, 4] : []);
+
+    // Draw main line
     ctx.beginPath();
     ctx.moveTo(start.x, start.y);
     ctx.lineTo(end.x, end.y);
     ctx.stroke();
 
-    const angle = Math.atan2(end.y - start.y, end.x - start.x);
-    const headLength = 10 + strokeWidth;
-    ctx.beginPath();
-    ctx.moveTo(end.x, end.y);
-    ctx.lineTo(end.x - headLength * Math.cos(angle - Math.PI / 6), end.y - headLength * Math.sin(angle - Math.PI / 6));
-    ctx.lineTo(end.x - headLength * Math.cos(angle + Math.PI / 6), end.y - headLength * Math.sin(angle + Math.PI / 6));
-    ctx.lineTo(end.x, end.y);
-    ctx.fill();
+    // Draw arrowhead if needed
+    if (isArrow) {
+      const angle = Math.atan2(end.y - start.y, end.x - start.x);
+      const head = 10 + width;
+      ctx.beginPath();
+      ctx.moveTo(end.x, end.y);
+      ctx.lineTo(end.x - head * Math.cos(angle - Math.PI / 6), end.y - head * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(end.x - head * Math.cos(angle + Math.PI / 6), end.y - head * Math.sin(angle + Math.PI / 6));
+      ctx.lineTo(end.x, end.y);
+      ctx.fill();
+    }
+
+    // Draw angle if preview
+    if (preview) {
+      const angle = Math.atan2(end.y - start.y, end.x - start.x);
+      const degrees = Math.round((angle * 180) / Math.PI);
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "red";
+      ctx.fillText(`${degrees}°`, end.x + 5, end.y - 5);
+    }
+
     ctx.setLineDash([]);
   };
 
@@ -185,13 +209,10 @@ export default function WhiteboardView({ boardId = "default" }) {
   // --- Mouse Events ---
   const handleMouseDown = (e) => {
     const pos = getPointerPos(e);
-
     if (tool === "text") {
-      const newBox = { x: pos.x, y: pos.y, text: "", color, width };
-      setActiveText(newBox);
+      setActiveText({ x: pos.x, y: pos.y, text: "", color, width: textSize });
       return;
     }
-
     setIsDrawing(true);
     setStartPos(pos);
     setCurrentStroke([pos]);
@@ -205,40 +226,54 @@ export default function WhiteboardView({ boardId = "default" }) {
   };
 
   const handleMouseUp = async () => {
-    if (!isDrawing || !user || !orgId) return;
+    if (!isDrawing) return;
+    setIsDrawing(false);
     const endPos = currentStroke[0];
-
+    const points = tool === "pen" || tool === "eraser" ? currentStroke : [startPos, endPos];
     const newStroke = {
-      points: tool === "pen" || tool === "eraser" ? currentStroke : [startPos, endPos],
+      points,
       color: tool === "eraser" ? "#ffffff" : color,
       width,
       tool,
-      userId: user.id,
+      userId: user?.id ?? null,
       createdAt: Date.now(),
     };
 
-    setStrokes([...strokes, newStroke]);
+    setStrokes((prev) => [...prev, newStroke]);
+    setHistory((prev) => [...prev, { type: "stroke", data: newStroke }]);
     setCurrentStroke([]);
     setStartPos(null);
-    setIsDrawing(false);
     setRedoStack([]);
-    await addStrokeMutation({ boardId, orgId, stroke: newStroke });
+
+    if (isClerkLoaded && isSignedIn && orgId && user) {
+      try {
+        await addStrokeMutation({ boardId, orgId, stroke: newStroke });
+      } catch (err) {
+        console.error("Failed to save stroke:", err);
+      }
+    }
   };
 
+  // --- Text Tool ---
   const handleTextChange = (e) => setActiveText({ ...activeText, text: e.target.value });
   const handleTextSubmit = () => {
-    if (!activeText || !activeText.text.trim()) return;
-    setTextBoxes([...textBoxes, activeText]);
+    if (!activeText?.text?.trim()) return;
+    setTextBoxes((prev) => [...prev, activeText]);
+    setHistory((prev) => [...prev, { type: "text", data: activeText }]);
     setActiveText(null);
   };
 
-  // --- Undo / Redo ---
-  const undo = () => {
-    setStrokes((prev) => {
+  // --- Undo/Redo ---
+  const undo = async () => {
+    setHistory((prev) => {
       if (!prev.length) return prev;
-      const newStrokes = prev.slice(0, -1);
-      setRedoStack((r) => [prev[prev.length - 1], ...r]);
-      return newStrokes;
+      const last = prev[prev.length - 1];
+      setRedoStack((r) => [last, ...r]);
+      if (last.type === "stroke") setStrokes((s) => s.slice(0, -1));
+      else if (last.type === "text") setTextBoxes((t) => t.slice(0, -1));
+      if (isClerkLoaded && isSignedIn && orgId && last.type === "stroke")
+        removeLastStroke({ boardId, orgId }).catch(console.error);
+      return prev.slice(0, -1);
     });
   };
 
@@ -246,37 +281,86 @@ export default function WhiteboardView({ boardId = "default" }) {
     setRedoStack((prev) => {
       if (!prev.length) return prev;
       const [first, ...rest] = prev;
-      setStrokes((s) => [...s, first]);
+      if (first.type === "stroke") {
+        setStrokes((s) => [...s, first.data]);
+        if (isClerkLoaded && isSignedIn && orgId)
+          addStrokeMutation({ boardId, orgId, stroke: first.data }).catch(console.error);
+      } else if (first.type === "text") setTextBoxes((t) => [...t, first.data]);
+      setHistory((h) => [...h, first]);
       return rest;
     });
   };
 
   const clear = async () => {
     setStrokes([]);
-    setRedoStack([]);
     setTextBoxes([]);
-    if (isClerkLoaded && isSignedIn && orgId) {
-      await clearBoardMutation({ boardId, orgId });
-    }
+    setRedoStack([]);
+    setHistory([]);
+    if (isClerkLoaded && isSignedIn && orgId) await clearBoardMutation({ boardId, orgId });
   };
 
   return (
     <div ref={containerRef} className="w-full h-full relative bg-gray-100">
       {/* Toolbar */}
       <div
-        className="fixed top-16 flex flex-col gap-3 p-2 rounded bg-black/50 z-20 transition-left duration-300"
-        style={{ left: `${toolbarLeft}px` }}
+        className="fixed top-16 flex flex-col items-center gap-3 p-4 rounded bg-black/60 z-20"
+        style={{ left: `${toolbarLeft}px`, width: "60px", height: "auto" }}
       >
-        <button onClick={() => setTool("pen")} className={`p-2 rounded ${tool === "pen" ? "bg-white text-black" : "bg-transparent text-white"}`} title="Pen"><PenTool size={20} /></button>
-        <button onClick={() => setTool("eraser")} className={`p-2 rounded ${tool === "eraser" ? "bg-white text-black" : "bg-transparent text-white"}`} title="Eraser"><Eraser size={20} /></button>
-        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} disabled={tool === "eraser"} className="w-10 h-10 p-0 border-none" />
-        <button onClick={() => setTool("rectangle")} className={`p-2 rounded ${tool === "rectangle" ? "bg-white text-black" : "bg-transparent text-white"}`} title="Rectangle">▭</button>
-        <button onClick={() => setTool("ellipse")} className={`p-2 rounded ${tool === "ellipse" ? "bg-white text-black" : "bg-transparent text-white"}`} title="Ellipse">⬭</button>
-        <button onClick={() => setTool("arrow")} className={`p-2 rounded ${tool === "arrow" ? "bg-white text-black" : "bg-transparent text-white"}`} title="Arrow">➤</button>
-        <button onClick={() => setTool("text")} className={`p-2 rounded ${tool === "text" ? "bg-white text-black" : "bg-transparent text-white"}`} title="Text">T</button>
-        <button onClick={undo} className="p-2 rounded bg-transparent text-white" title="Undo"><RotateCcw size={20} /></button>
-        <button onClick={redo} className="p-2 rounded bg-transparent text-white" title="Redo"><RotateCw size={20} /></button>
-        <button onClick={clear} className="p-2 rounded bg-red-500 text-white" title="Clear"><Trash2 size={20} /></button>
+        {[
+          { toolName: "pen", icon: <PenTool size={20} /> },
+          { toolName: "eraser", icon: <Eraser size={20} /> },
+          { toolName: "line", icon: "─" },
+        ].map(({ toolName, icon }) => (
+          <button
+            key={toolName}
+            onClick={() => setTool(toolName)}
+            className={`p-2 rounded ${tool === toolName ? "bg-white text-black" : "bg-transparent text-white"}`}
+            title={toolName.charAt(0).toUpperCase() + toolName.slice(1)}
+          >
+            {icon}
+          </button>
+        ))}
+
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          disabled={tool === "eraser"}
+          className="w-10 h-10 p-0 border-none"
+        />
+
+        {["rectangle", "ellipse", "arrow", "text"].map((t) => (
+          <button
+            key={t}
+            onClick={() => setTool(t)}
+            className={`p-2 rounded ${tool === t ? "bg-white text-black" : "bg-transparent text-white"}`}
+            title={t.charAt(0).toUpperCase() + t.slice(1)}
+          >
+            {t === "rectangle" ? "▭" : t === "ellipse" ? "⬭" : t === "arrow" ? "➤" : "T"}
+          </button>
+        ))}
+
+        <input
+          type="number"
+          value={textSize}
+          onChange={(e) => setTextSize(parseInt(e.target.value))}
+          placeholder="Size"
+          className="w-12 h-8 text-center border rounded appearance-none
+     [&::-webkit-inner-spin-button]:appearance-none
+     [&::-webkit-outer-spin-button]:appearance-none
+     [&::-moz-inner-spin-button]:appearance-none
+     [&::-moz-outer-spin-button]:appearance-none"
+        />
+
+        <button onClick={undo} className="p-2 rounded bg-transparent text-white" title="Undo">
+          <RotateCcw size={20} />
+        </button>
+        <button onClick={redo} className="p-2 rounded bg-transparent text-white" title="Redo">
+          <RotateCw size={20} />
+        </button>
+        <button onClick={clear} className="p-2 rounded bg-red-500 text-white" title="Clear">
+          <Trash2 size={20} />
+        </button>
       </div>
 
       {/* Canvas */}
@@ -290,16 +374,19 @@ export default function WhiteboardView({ boardId = "default" }) {
 
       {/* Text Boxes */}
       {textBoxes.map((box, i) => (
-        <div key={i} style={{
-          position: "absolute",
-          left: box.x,
-          top: box.y,
-          fontSize: `${box.width * 5}px`,
-          color: box.color,
-          border: "1px dotted black",
-          padding: "2px",
-          pointerEvents: "none"
-        }}>
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            left: box.x,
+            top: box.y,
+            fontSize: `${box.width}px`,
+            color: box.color,
+            border: "1px dotted black",
+            padding: "2px",
+            pointerEvents: "none",
+          }}
+        >
           {box.text}
         </div>
       ))}
@@ -316,7 +403,7 @@ export default function WhiteboardView({ boardId = "default" }) {
             position: "absolute",
             left: activeText.x,
             top: activeText.y,
-            fontSize: `${activeText.width * 5}px`,
+            fontSize: `${activeText.width}px`,
             color: activeText.color,
             border: "1px dotted black",
             background: "transparent",

@@ -6,10 +6,10 @@ import { getUser } from "./users";
 async function hasAccessToOrg(ctx, tokenIdentifier, orgId) {
   const user = await getUser(ctx, tokenIdentifier);
   if (!user) return false;
-  return user.orgIds.includes(orgId); // only check orgIds
+  return user.orgIds.includes(orgId) || user.tokenIdentifier.includes(orgId);
 }
 
-// ==================== Queries ====================
+// Queries
 
 // Get all strokes for a board (with access check)
 export const getStrokes = query({
@@ -28,13 +28,13 @@ export const getStrokes = query({
 
     return await ctx.db
       .query("strokes")
-      .withIndex("by_board", (q) => q.eq("boardId", boardId))
+      .withIndex("by_board_org", (q) =>
+        q.eq("boardId", boardId).eq("orgId", orgId)
+      )
       .order("asc")
       .collect();
   },
 });
-
-// ==================== Mutations ====================
 
 // Add a stroke
 export const addStroke = mutation({
@@ -64,6 +64,7 @@ export const addStroke = mutation({
 
     await ctx.db.insert("strokes", {
       boardId,
+      orgId, // ✅ added orgId here
       ...stroke,
     });
 
@@ -88,11 +89,45 @@ export const clearBoard = mutation({
 
     const strokes = await ctx.db
       .query("strokes")
-      .withIndex("by_board", (q) => q.eq("boardId", boardId))
+      .withIndex("by_board_org", (q) =>
+        q.eq("boardId", boardId).eq("orgId", orgId)
+      )
       .collect();
 
     for (const s of strokes) {
       await ctx.db.delete(s._id);
+    }
+
+    return true;
+  },
+});
+
+// Remove the last stroke (Undo)
+export const removeLastStroke = mutation({
+  args: { boardId: v.string(), orgId: v.string() },
+  handler: async (ctx, { boardId, orgId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Unauthorized");
+
+    const hasAccess = await hasAccessToOrg(
+      ctx,
+      identity.tokenIdentifier,
+      orgId
+    );
+    if (!hasAccess)
+      throw new ConvexError("You don't have access to this board.");
+
+    // Get the latest stroke for this board & org
+    const strokes = await ctx.db
+      .query("strokes")
+      .withIndex("by_board_org", (q) =>
+        q.eq("boardId", boardId).eq("orgId", orgId)
+      )
+      .order("desc") // newest first
+      .take(1);
+
+    if (strokes.length > 0) {
+      await ctx.db.delete(strokes[0]._id);
     }
 
     return true;

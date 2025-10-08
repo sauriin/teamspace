@@ -95,7 +95,7 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
             {/* Primary Sidebar */}
             <aside
                 className={`flex flex-col py-6 border-r border-gray-700 transition-all duration-300 bg-black text-white
-    ${isCollapsed ? "w-20" : "w-24 md:w-24 lg:w-28"}`} // primary sidebar width adjusted
+    ${isCollapsed ? "w-20" : "w-24 md:w-24 lg:w-28"}`}
             >
                 <div className={`mb-12 mt-2 flex justify-center ${isCollapsed ? "" : "px-4"}`}>
                     <Link href="/">
@@ -118,8 +118,8 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
                 </nav>
             </aside>
 
-            {/* Secondary Sidebar */}
-            {(activeSection === "folders" || currentMenu.length > 0) && (
+            {/* Secondary Sidebar (Removed for WhiteBoard) */}
+            {(activeSection !== "whiteBoard" && (activeSection === "folders" || currentMenu.length > 0)) && (
                 <aside
                     className={`flex flex-col py-6 border-r border-gray-700 bg-black text-white transition-all duration-300
           ${isCollapsed ? "w-0 overflow-hidden" : "w-48 px-4"}`}
@@ -127,9 +127,7 @@ const Navbar = ({ onMenuChange, folders = [] }) => {
                     <h2 className="text-lg font-semibold ml-2 mb-6">
                         {activeSection === "folders"
                             ? "Folders"
-                            : activeSection === "whiteBoard"
-                                ? "Smart Board"
-                                : activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
+                            : activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
                     </h2>
 
                     <div className="flex-1">
