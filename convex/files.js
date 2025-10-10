@@ -23,11 +23,18 @@ export const createFile = mutation({
     fileId: v.id("_storage"),
     orgId: v.string(),
     type: v.optional(fileTypes),
+    size: v.number(), // ✅ new
   },
   async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity)
       throw new ConvexError("You must be logged in to upload file.");
+
+    // ✅ Size validation
+    const MAX_SIZE = 2 * 1024 * 1024; // 2 MB in bytes
+    if (args.size > MAX_SIZE) {
+      throw new ConvexError("File size exceeds 2 MB limit.");
+    }
 
     const hasAccess = await hasAccessToOrg(
       ctx,
@@ -98,7 +105,8 @@ export const createFile = mutation({
       orgId: args.orgId,
       fileId: args.fileId,
       type: fileType,
-      folderId, // undefined if no folder
+      folderId,
+      size: args.size, // ✅ store size in bytes
       isDeleted: false,
       deletedAt: undefined,
       createdAt: Date.now(),
@@ -211,5 +219,40 @@ export const getFileDetails = query({
       createdAt: file.createdAt,
       createdBy: createdByName,
     };
+  },
+});
+
+export const getUsedStorage = query({
+  args: {
+    orgId: v.optional(v.string()), // optional for personal
+  },
+  async handler(ctx, args) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return 0;
+
+    let files;
+    if (args.orgId) {
+      // organization usage
+      files = await ctx.db
+        .query("files")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .filter((q) => q.eq(q.field("isDeleted"), false))
+        .collect();
+    } else {
+      // personal usage
+      files = await ctx.db
+        .query("files")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("isDeleted"), false),
+            q.eq(q.field("orgId"), undefined),
+            q.eq(q.field("createdByName"), identity.name)
+          )
+        )
+        .collect();
+    }
+
+    const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
+    return totalBytes;
   },
 });

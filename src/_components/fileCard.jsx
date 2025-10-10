@@ -395,6 +395,14 @@ export function FileCard({ file, variant = "grid" }) {
                         <p>
                             <strong>Created By:</strong> {file.createdByName}
                         </p>
+                        <p>
+                            <strong>Size:</strong>{" "}
+                            {file.size
+                                ? file.size >= 1024 * 1024
+                                    ? (file.size / (1024 * 1024)).toFixed(2) + " MB"
+                                    : (file.size / 1024).toFixed(2) + " KB"
+                                : "Unknown"}
+                        </p>
                     </div>
                 </DialogContent>
             </Dialog>

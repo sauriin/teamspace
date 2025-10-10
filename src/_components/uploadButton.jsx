@@ -60,13 +60,25 @@ export function UploadButton() {
   async function onSubmit(values) {
     if (!orgId) return;
 
+    const file = values.file[0];
+    const fileType = file.type;
+    const fileSize = file.size; // bytes
+    const MAX_SIZE = 2 * 1024 * 1024;
+
+    // ✅ Client-side validation
+    if (fileSize > MAX_SIZE) {
+      toast.error("File too large", {
+        description: "Maximum allowed size is 2 MB.",
+      });
+      return;
+    }
+
     const postUrl = await generateUploadUrl();
-    const fileType = values.file[0].type;
 
     const result = await fetch(postUrl, {
       method: "POST",
       headers: { "Content-Type": fileType },
-      body: values.file[0],
+      body: file,
     });
 
     const { storageId } = await result.json();
@@ -93,6 +105,7 @@ export function UploadButton() {
         fileId: storageId,
         orgId,
         type: types[fileType],
+        size: fileSize, // ✅ send size
       });
 
       form.reset();
@@ -107,6 +120,7 @@ export function UploadButton() {
       });
     }
   }
+
 
   if (!isClerkLoaded) {
     return <div className="p-6">Loading...</div>;

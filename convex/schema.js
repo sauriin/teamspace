@@ -23,6 +23,7 @@ export default defineSchema({
     orgId: v.optional(v.string()),
     folderId: v.optional(v.id("folders")),
     fileId: v.id("_storage"),
+    size: v.number(),
     isDeleted: v.optional(v.boolean()),
     deletedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -67,7 +68,7 @@ export default defineSchema({
   // Whiteboard Strokes Table
   strokes: defineTable({
     boardId: v.string(),
-    orgId: v.string(), 
+    orgId: v.string(),
     userId: v.string(),
     tool: v.string(), // "pen", "eraser", "highlighter", "line", etc.
     color: v.string(),
@@ -76,5 +77,5 @@ export default defineSchema({
     createdAt: v.number(), // timestamp
   })
     .index("by_board", ["boardId"])
-    .index("by_board_org", ["boardId", "orgId"]), 
+    .index("by_board_org", ["boardId", "orgId"]),
 });
