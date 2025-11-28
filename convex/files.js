@@ -23,7 +23,7 @@ export const createFile = mutation({
     fileId: v.id("_storage"),
     orgId: v.string(),
     type: v.optional(fileTypes),
-    size: v.number(), // ✅ new
+    size: v.number(), // new
   },
   async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
